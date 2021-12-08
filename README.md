@@ -1,5 +1,5 @@
 # PyCharm Project MobAdaptUi
-Adaptive Mobile User Interface based on Machine Learning Model (Multiagent Reinforcement Learning Approach)
+Adaptive Mobile User Interface based on Machine Learning Model (Multi-agent Reinforcement Learning Approach)
 
 A simple Kivy Python application that adapts a tiled interface based on the number of clicks (a simple frequency analysis).
 
