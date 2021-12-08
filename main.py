@@ -1,16 +1,42 @@
-# This is a sample Python script.
-
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
-
-
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
+from kivy.app import App
+from kivy.lang import Builder
+from kivy.uix.button import Button
+from kivy.properties import ObjectProperty
+from kivy.uix.gridlayout import GridLayout
 
 
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    print_hi('PyCharm')
+from os import listdir
+kv_path = './kv/'
+for kv in listdir(kv_path):
+    Builder.load_file(kv_path+kv)
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+
+class AddButton(Button):
+    pass
+
+
+class SubtractButton(Button):
+    pass
+
+
+class Container(GridLayout):
+    display = ObjectProperty()
+
+    def add_one(self):
+        value = int(self.display.text)
+        self.display.text = str(value+1)
+
+    def subtract_one(self):
+        value = int(self.display.text)
+        self.display.text = str(value-1)
+
+
+class MainApp(App):
+    def build(self):
+        self.title = 'Awesome app!!!'
+        return Container()
+
+
+if __name__ == "__main__":
+    app = MainApp()
+    app.run()
