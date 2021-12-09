@@ -1,13 +1,28 @@
 <Container>:
     display: display
+    btn: btn
     rows: 1
+    columns: 1
+    Label:
+        id: display
+        font_size: dp(50)
+        text: '0'
+
     BoxLayout:
         orientation: "vertical"
         AddButton:
             on_release: root.add_one()
         SubtractButton:
+            id: btn
             on_release: root.subtract_one()
-    Label:
-        id: display
-        font_size: dp(50)
-        text: '0'
+        SimpleButton:
+            on_release: root.animate()
+
+    BoxLayout:
+        orientation: "horizontal"
+        SimpleButton:
+            on_release: root.animate()
+        SimpleButton:
+            on_release: root.animate()
+        SimpleButton:
+            on_release: root.animate()
