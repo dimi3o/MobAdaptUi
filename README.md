@@ -8,3 +8,31 @@ The first release of the prototype before the end of 2021, which will run on an 
 
 Version 0.0.1 (11.12.2021)
 ![img.png](img.png)
+
+## Android
+You can build for Android using buildozer on Linux.
+## Install buildozer
+
+Follow the instructions for your platform [here](https://pypi.org/project/buildozer/) 
+
+Create a new buildozer.spec file or use the example one from the repo.
+```
+buildozer init
+```
+Make the following changes to the buildozer.spec file
+```
+source.include_exts = py,png,jpg,kv,atlas
+requirements = python3,kivy
+```
+Change the architecture you are building for to match that of your device or emulator (f.e. arm64-v8a)
+```
+android.arch = arm64-v8a
+```
+Build the APK
+```
+buildozer android debug
+```
+and install it with
+```
+adb install bin/myapp-0.1-x86-debug.apk
+```
