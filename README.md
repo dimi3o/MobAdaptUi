@@ -7,7 +7,7 @@ A simple Kivy Python application that adapts a tiled interface based on the numb
 The first release of the prototype before the end of 2021, which will run on an Android smartphone.
 
 Version 0.0.1 (11.12.2021)
-![img.png](img.png)
+![img.png](img/interface001.png)
 
 ## Android
 You can build for Android using buildozer on Linux.

@@ -1,0 +1,8 @@
+red = [1,0,0,1]
+gray = [.10, .35, .41, .85]
+green = [0,1,0,1]
+lgreen = [0,1,1,1]
+blue = [0,0,1,1]
+purple = [1,0,1,1]
+favcolors = [red, green, blue, lgreen, purple]
+allcolors = [red, gray, green, blue, lgreen, purple]

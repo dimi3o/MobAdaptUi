@@ -37,6 +37,5 @@ class TestApp(App):
                         on_press=self.animate)
         return button
 
-
 if __name__ == '__main__':
     TestApp().run()
