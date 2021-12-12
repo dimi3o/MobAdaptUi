@@ -3,6 +3,7 @@ import random
 from kivy.app import App
 from kivy.animation import Animation
 from kivy.uix.button import Button
+from kivy.uix.togglebutton import ToggleButton
 from kivy.uix.label import Label
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.popup import Popup
@@ -14,7 +15,12 @@ class MainApp(App):
     def build(self):
         self.title = 'Adaptive UI'
         self.root = BoxLayout(orientation="vertical", padding=10)  #,size_hint_y=None)
-        self.root.add_widget(Label(text="Frequency Analysis",size=(200, 50),size_hint=(1, None)))
+        hor = BoxLayout(orientation="horizontal", padding=10, spacing=10,size_hint_y=None)  # ,size_hint=(None, None))
+        text = ["LEFT","RIGHT","BOTTOM","TOP"]
+        for i in range(4):
+            hor.add_widget(ToggleButton(size_hint_y=None, height='48dp', text=text[i], state="down" if i % 2 == 0 else "normal", group="g1" if i < 2 else "g2"))
+        self.root.add_widget(hor)
+        #self.root.add_widget(Label(text="Frequency Analysis",size=(200, 50),size_hint=(1, None)))
         for i in range(4):
             hor = BoxLayout(orientation="horizontal", padding=10, spacing=10) #,size_hint=(None, None))
             for i in range(4):
@@ -72,4 +78,5 @@ class MainApp(App):
 
 if __name__ == "__main__":
     app = MainApp()
+    #app.show_popup("The frequency of clicks adapts the interface", "Info")
     app.run()
