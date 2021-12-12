@@ -23,7 +23,7 @@ class MainApp(App):
         self.root.add_widget(hor)
         self.hor_shift = "right"; self.ver_shift = "bottom"
         self.topcol = 0; self.toprow = 0
-        self.rows = 4; self.cols = 4
+        self.rows = 5; self.cols = 5
         for i in range(self.rows):
             hor = BoxLayout(orientation="horizontal", padding=10, spacing=10) #,size_hint=(None, None))
             for i in range(self.cols):
@@ -129,7 +129,7 @@ class MainApp(App):
         if self.ver_shift == "bottom":
             pos_y = self.shift_padding
         else:
-            pos_y = (instance.height)*self.rows-self.shift_padding
+            pos_y = instance.height*(self.rows-1)+self.shift_padding*self.rows
         return pos_y
 
     def show_popup(self, text="", title="Popup Window"):
