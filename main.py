@@ -80,7 +80,7 @@ class MainApp(App):
         adapt = False
         row, col = self.get_idx_children(instance)
         pos_x = instance.x; pos_y = instance.y
-        anim = Animation(pos=(instance.x, instance.y), t='out_bounce')
+        anim = Animation(pos=(instance.x, instance.y), t='out_bounce',d=.1)
         if row >= 0 and col >= 0:
             # Row adapt
             if self.swap_top_row(freq,row):
@@ -103,7 +103,7 @@ class MainApp(App):
                     self.root.children[row].children[to_pos_col] = instance
 
         if adapt:
-            anim += Animation(pos=(pos_x, pos_y), t='out_bounce', d=1)
+            anim += Animation(pos=(pos_x, pos_y), t='out_bounce', d=.1)
             anim.start(instance)
             #instance.background_color = random.choice(favcolors)
 
