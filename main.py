@@ -48,21 +48,24 @@ class MainApp(App):
             self.adapt_ui(instance, freq)
         instance.text = str(freq)
 
-    def swap_top_col(self, freq):
+    def swap_top_col(self, freq, row, col):
+        if row == self.toprow: return False
         maxfreq = 0;
         for r in range(self.rows):
             f = int(self.root.children[r].children[self.topcol].text)
-            if f>maxfreq: maxfreq=f
+            if f>maxfreq: maxfreq = f
         return True if freq>maxfreq else False
 
-    def swap_top_row(self, freq, row):
+    def swap_top_row(self, freq, row, col):
+        if col == self.topcol: return False
         maxfreq = 0;
         for c in range(self.cols):
             f = int(self.root.children[row].children[c].text)
             if f>maxfreq: maxfreq = f
         return True if freq > maxfreq else False
 
-    def swap_row(self, freq, row):
+    def swap_row(self, freq, row, col):
+        c = col
         if self.hor_shift == "left":
             col_start = self.cols - 1
             col_end = 0
@@ -74,38 +77,58 @@ class MainApp(App):
         for c in range(col_start, col_end, step):
             f = int(self.root.children[row].children[c].text)
             if freq > f: break
-        return c
+        return c if c != col else col
+
+    def swap_col(self, freq, row, col):
+        r = row
+        if self.ver_shift == "bottom":
+            row_start = row-1
+            row_end = self.rows - 1
+            step = -1
+        else:
+            row_start = row+1
+            row_end = self.rows - 1
+            step = 1
+        for r in range(row_start, row_end, step):
+            f = int(self.root.children[r].children[self.topcol].text)
+            if freq > f: break
+        return r if r != row else row
+
+    def shift_from_to(self, instance, row, col, to_row, to_col):
+        if row == to_row and col == to_col: return
+        self.root.children[row].children[col] = self.root.children[to_row].children[to_col]
+        self.root.children[to_row].children[to_col] = instance
 
     def adapt_ui(self, instance, freq):
-        adapt = False
         row, col = self.get_idx_children(instance)
         pos_x = instance.x; pos_y = instance.y
-        anim = Animation(pos=(instance.x, instance.y), t='out_bounce',d=.1)
-        if row >= 0 and col >= 0:
+        anim = Animation(pos=(instance.x, instance.y), t='out_bounce', d=.1)
+        if row >= 0 and col >= 0 and (row != self.toprow or col != self.topcol):
             # Row adapt
-            if self.swap_top_row(freq,row):
-                adapt = True
-                self.root.children[row].children[col] = self.root.children[row].children[self.topcol]
-                self.root.children[row].children[self.topcol] = instance
-                pos_x = self.animate_row(instance,anim)
+            if self.swap_top_row(freq, row, col):
+                self.shift_from_to(instance, row, col, row, self.topcol)
+                col = self.topcol
+                pos_x = self.animate_row(instance, anim)
+            else:
+                to_pos_col = self.swap_row(freq, row, col)
+                if col != to_pos_col:
+                    self.shift_from_to(instance, row, col, row, to_pos_col)
+                    col = to_pos_col
 
             # Column adapt
-            if self.swap_top_col(freq):
-                adapt = True
-                self.root.children[row].children[self.topcol] = self.root.children[self.toprow].children[self.topcol]
-                self.root.children[self.toprow].children[self.topcol] = instance
+            if self.swap_top_col(freq, row, col):
+                self.shift_from_to(instance, row, self.topcol, self.toprow, self.topcol)
+                row = self.toprow
                 pos_y = self.animate_col(instance, anim)
+            else:
+                to_pos_row = self.swap_col(freq, row, col)
+                if row != to_pos_row:
+                    self.shift_from_to(instance, row, self.topcol, to_pos_row, self.topcol)
+                    row = to_pos_row
 
-            if not(adapt) and col != self.topcol:
-                to_pos_col = self.swap_row(freq,row)
-                if col != to_pos_col:
-                    self.root.children[row].children[col] = self.root.children[row].children[to_pos_col]
-                    self.root.children[row].children[to_pos_col] = instance
-
-        if adapt:
+        if pos_x != instance.x or pos_y != instance.y:
             anim += Animation(pos=(pos_x, pos_y), t='out_bounce', d=.1)
             anim.start(instance)
-            #instance.background_color = random.choice(favcolors)
 
     def get_idx_children(self, instance):
         row = -1; col = -1
