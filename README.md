@@ -3,7 +3,6 @@
 #### Copyright (c) 2021 Bauman Moscow State Technical University. All rights reserved.
 
 A simple Kivy Python application that adapts a tiled interface based on the number of clicks (a simple frequency analysis).
-
 The number of clicks on the button is the criterion of adaptation. We adapt the interface by a simple permutation, which varies to bring the buttons with the largest number of clicks closer to one of the 4 corners of the screen. The preferred edge setting is selected using the left, right, top, bottom keys.
 In the process of testing, I already found one flaw on my smartphone, which I did not correct (I will show it at the meeting).
 They can come up for discussion for consultation when it is convenient for you
