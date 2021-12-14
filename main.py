@@ -23,7 +23,7 @@ class MainApp(App):
         self.root.add_widget(hor)
         self.hor_shift = "right"; self.ver_shift = "bottom"
         self.topcol = 0; self.toprow = 0
-        self.rows = 6; self.cols = 6
+        self.rows = 5; self.cols = 5
         for i in range(self.rows):
             hor = BoxLayout(orientation="horizontal", padding=10, spacing=10) #,size_hint=(None, None))
             for i in range(self.cols):
@@ -90,10 +90,9 @@ class MainApp(App):
             row_end = self.rows
             step = 1
         for r in range(row_start, row_end, step):
-            #if r == row: continue
             f = int(self.root.children[r].children[self.topcol].text)
             if freq > f: break
-        return r if r != row and r != row_end else row
+        return r if r != row else row
 
     def shift_from_to(self, instance, row, col, to_row, to_col):
         if row == to_row and col == to_col: return
@@ -121,7 +120,7 @@ class MainApp(App):
                 self.shift_from_to(instance, row, self.topcol, self.toprow, self.topcol)
                 row = self.toprow
                 pos_y = self.animate_topcol(instance, anim)
-            elif col == self.topcol:
+            elif col == self.topcol and row != self.toprow:
                 to_pos_row = self.swap_col(freq, row, col)
                 if row != to_pos_row:
                     self.shift_from_to(instance, row, self.topcol, to_pos_row, self.topcol)
