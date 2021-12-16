@@ -15,6 +15,7 @@ class MainApp(App):
     def build(self):
         self.title = 'Adaptive UI'
         self.shift_padding = 20
+        self.shift_spacing = 10
         self.root = BoxLayout(orientation="vertical", padding=10)  #,size_hint_y=None)
         hor = BoxLayout(orientation="horizontal", padding=10, spacing=10,size_hint_y=None)  # ,size_hint=(None, None))
         text = ["left","right","top","bottom"]
@@ -23,7 +24,7 @@ class MainApp(App):
         self.root.add_widget(hor)
         self.hor_shift = "right"; self.ver_shift = "bottom"
         self.topcol = 0; self.toprow = 0
-        self.rows = 5; self.cols = 5
+        self.rows = 6; self.cols = 5
         for i in range(self.rows):
             hor = BoxLayout(orientation="horizontal", padding=10, spacing=10) #,size_hint=(None, None))
             for i in range(self.cols):
@@ -58,11 +59,11 @@ class MainApp(App):
 
     def swap_topcol(self, freq, row, col):
         if col == self.topcol: return False
-        maxfreq = 0;
+        max_freq = 0
         for c in range(self.cols):
             f = int(self.root.children[row].children[c].text)
-            if f>maxfreq: maxfreq = f
-        return True if freq > maxfreq else False
+            if f > max_freq: max_freq = f
+        return True if freq > max_freq else False
 
     def swap_row(self, freq, row, col):
         c = col
@@ -74,23 +75,26 @@ class MainApp(App):
             col_start = 0
             col_end = self.cols - 1
             step = 1
+        let_shift = False
         for c in range(col_start, col_end, step):
             f = int(self.root.children[row].children[c].text)
-            if freq > f: break
-        return c if c != col else col
+            if freq > f:
+                let_shift = True
+                break
+        return c if let_shift and c != col else col
 
     def swap_col(self, freq, row, col):
         r = row
         if self.ver_shift == "top":
-            row_start = self.toprow-1
+            row_start = self.toprow-1 if col == self.topcol else self.toprow
             row_end = -1
             step = -1
         else:
-            row_start = self.toprow+1
+            row_start = self.toprow+1 if col == self.topcol else self.toprow
             row_end = self.rows
             step = 1
         for r in range(row_start, row_end, step):
-            f = int(self.root.children[r].children[self.topcol].text)
+            f = int(self.root.children[r].children[col].text)
             if freq > f: break
         return r if r != row else row
 
@@ -107,24 +111,25 @@ class MainApp(App):
             # Column adapt
             if self.swap_topcol(freq, row, col):
                 self.shift_from_to(instance, row, col, row, self.topcol)
+                pos_x = self.animate_toprow(instance)
                 col = self.topcol
-                pos_x = self.animate_toprow(instance, anim)
             else:
                 to_pos_col = self.swap_row(freq, row, col)
                 if col != to_pos_col:
                     self.shift_from_to(instance, row, col, row, to_pos_col)
+                    pos_x = self.animate_row(instance, to_pos_col)
                     col = to_pos_col
 
             # Row adapt
             if self.swap_toprow(freq, row, col):
                 self.shift_from_to(instance, row, self.topcol, self.toprow, self.topcol)
+                pos_y = self.animate_topcol(instance)
                 row = self.toprow
-                pos_y = self.animate_topcol(instance, anim)
-            elif col == self.topcol and row != self.toprow:
+            elif row != self.toprow:
                 to_pos_row = self.swap_col(freq, row, col)
                 if row != to_pos_row:
-                    self.shift_from_to(instance, row, self.topcol, to_pos_row, self.topcol)
-                    pos_y = self.animate_col(instance, anim, to_pos_row)
+                    self.shift_from_to(instance, row, col, to_pos_row, col)
+                    pos_y = self.animate_col(instance, to_pos_row)
                     row = to_pos_row
 
         if pos_x != instance.x or pos_y != instance.y:
@@ -142,22 +147,25 @@ class MainApp(App):
                     break
         return row, col
 
-    def animate_toprow(self, instance, anim):
+    def animate_toprow(self, instance):
         if self.hor_shift == "right":
             pos_x = Window.width - instance.width - self.shift_padding
         else:
             pos_x = self.shift_padding
         return pos_x
 
-    def animate_topcol(self, instance, anim):
+    def animate_topcol(self, instance):
         if self.ver_shift == "bottom":
             pos_y = self.shift_padding
         else:
             pos_y = instance.height*(self.rows-1)+self.shift_padding*self.rows
         return pos_y
 
-    def animate_col(self, instance, anim, row):
+    def animate_col(self, instance, row):
         return self.shift_padding*(row+1)+instance.height*row
+
+    def animate_row(self, instance, col):
+        return instance.width*(self.cols - col - 1) + self.shift_spacing*(self.cols - col) + 10
 
     def show_popup(self, text="", title="Popup Window"):
         popup = Popup(title=title, size_hint=(None, None),
