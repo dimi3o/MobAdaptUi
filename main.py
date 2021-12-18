@@ -44,6 +44,7 @@ class MainApp(App):
         sm = self.root.ids.sm
         sm.switch_to(self.screen, direction='right')
         self.current_title = self.screen.name
+        self.text_to_display("\nMinimalistic Display")
 
     def load_screen(self,index=0):
         self.display = Label(
