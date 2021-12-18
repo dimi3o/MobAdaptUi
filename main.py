@@ -1,12 +1,10 @@
-__version__ = '0.0.2'
-
 import random
-from time import time
+#from time import time
 from kivy.app import App
 from kivy.properties import NumericProperty, BooleanProperty, StringProperty, ListProperty
 from kivy.animation import Animation
 from kivy.uix.button import Button
-from kivy.uix.togglebutton import ToggleButton
+#from kivy.uix.togglebutton import ToggleButton
 from kivy.uix.label import Label
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.popup import Popup
@@ -14,9 +12,13 @@ from kivy.core.window import Window
 from kivy.clock import Clock
 from kivy.uix.screenmanager import Screen
 from kivy.lang import Builder
-from os.path import dirname, join
+#from os.path import dirname, join, abspath
 from colors import allcolors, favcolors #, somecolors
+#from android.permissions import request_permissions, Permission
+#request_permissions([Permission.READ_EXTERNAL_STORAGE, Permission.WRITE_EXTERNAL_STORAGE])
+#android.permissions = WRITE_EXTERNAL_STORAGE # permission in your buildozer.spec file.
 
+__version__ = '0.0.2'
 
 class MainScreen(Screen):
     fullscreen = BooleanProperty(False)
@@ -25,7 +27,6 @@ class MainScreen(Screen):
         if 'content' in self.ids:
             return self.ids.content.add_widget(*args, **kwargs)
         return super(MainScreen, self).add_widget(*args, **kwargs)
-
 
 class MainApp(App):
     index = NumericProperty(-1)
@@ -37,10 +38,14 @@ class MainApp(App):
     def build(self):
         Clock.schedule_interval(self._update_clock, 1 / 60.) #
         self.screens = {}
-        self.available_screens = ['MainScreen']
-        self.screen_names = self.available_screens
-        curdir = dirname(__file__)
-        self.available_screens = [join(curdir, 'data', 'screens','{}.kv'.format(fn).lower()) for fn in self.available_screens]
+        #self.available_screens = ['MainScreen']
+        #self.screen_names = self.available_screens
+        self.screen_names = ['MainScreen']
+        self.available_screens = ['mainscreen.kv']
+        #curdir = dirname(__file__)
+        #curdir = dirname(abspath(__file__))
+        #self.available_screens = [join(curdir, 'data', 'screens','{}.kv'.format(fn).lower()) for fn in self.available_screens]
+        # self.image = curdir + '/data/screens/g3347.png'
         self.screen = self.load_screen(0)
         self.buttons = self.screen.ids.content
         sm = self.root.ids.sm
@@ -89,7 +94,7 @@ class MainApp(App):
         #if self.emulation: self.show_popup("Emulation clicks!","Attention")
 
     def _update_clock(self, dt):
-        self.time = time()
+        #self.time = time()
         if self.emulation:
             rand_row = random.randint(0, self.rows - 1)
             rand_col = random.randint(0, self.cols - 1)
