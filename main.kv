@@ -1,0 +1,86 @@
+#:kivy 1.8.0
+#:import KivyLexer kivy.extras.highlight.KivyLexer
+#:import Factory kivy.factory.Factory
+
+<MainScreen>:
+    ScrollView:
+        do_scroll_x: False
+        do_scroll_y: False if root.fullscreen else (content.height > root.height - dp(16))
+        AnchorLayout:
+            size_hint_y: None
+            height: root.height if root.fullscreen else max(root.height, content.height)
+    #        GridLayout:
+    #            id: content
+    #            cols: 1
+    #            spacing: '8dp'
+    #            padding: '8dp'
+    #            size_hint: (1, 1) if root.fullscreen else (.8, None)
+    #            height: self.height if root.fullscreen else self.minimum_height
+            BoxLayout:
+                id: content
+                orientation: "vertical"
+                padding: 10
+                size_hint: (1, 1) if root.fullscreen else (.8, None)
+                height: self.height if root.fullscreen else self.minimum_height
+                #size_hint_y: None
+                #height: '48dp'
+
+
+BoxLayout:
+    orientation: 'vertical'
+
+    canvas.before:
+        Color:
+            rgb: .6, .6, .6
+        Rectangle:
+            size: self.size
+            #source: 'data/background.png'
+
+    ActionBar:
+
+        ActionView:
+            id: av
+            ActionPrevious:
+                #with_previous: (False if sm.current_screen.name == 'button' else True) if sm.current_screen else False
+                title: 'Adapt UI'
+                on_release: app.go_hierarchy_previous()
+
+
+            ActionToggleButton:
+                text: 'Toggle sourcecode'
+                icon: 'data/icons/bug.png'
+                on_release: app.toggle_emulation()
+                important: True
+
+            ActionToggleButton:
+                text: 'left'
+                group: 'g1'
+                icon: 'data/icons/left.png'
+                on_release: app.on_toggle_left_right()
+
+            ActionToggleButton:
+                text: 'right'
+                state: 'down'
+                group: 'g1'
+                icon: 'data/icons/right.png'
+                on_release: app.on_toggle_left_right()
+
+            ActionToggleButton:
+                text: 'top'
+                group: 'g2'
+                icon: 'data/icons/top.png'
+                on_release: app.on_toggle_top_bottom()
+
+            ActionToggleButton:
+                text: 'bottom'
+                state: 'down'
+                group: 'g2'
+                icon: 'data/icons/bottom.png'
+                on_release: app.on_toggle_top_bottom()
+
+    ScreenManager:
+        id: sm
+        on_current_screen:
+            #spnr.text = args[1].name
+            idx = app.screen_names.index(args[1].name)
+            if idx > -1: app.hierarchy.append(args[1])
