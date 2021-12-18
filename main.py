@@ -1,3 +1,5 @@
+__version__ = '0.0.2'
+
 import random
 from time import time
 from kivy.app import App
