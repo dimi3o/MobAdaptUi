@@ -20,6 +20,9 @@ class MainApp(App):
         self.shift_padding = 20
         self.shift_spacing = 10
         self.root = BoxLayout(orientation="vertical", padding=10)  #,size_hint_y=None)
+        self.display = Label()
+        self.text_to_display("\n\nMinimalistic Display")
+        self.root.add_widget(self.display)
         hor = BoxLayout(orientation="horizontal", padding=10, spacing=10,size_hint_y=None)  # ,size_hint=(None, None))
         text = ["left","right","top","bottom"]
         for i in range(4):
@@ -48,9 +51,13 @@ class MainApp(App):
             rand_row = random.randint(0, self.rows - 1)
             rand_col = random.randint(0, self.cols - 1)
             self.on_btn_click(self.get_button_instance(rand_row,rand_col))
+            self.text_to_display("\n\nEMULATION: row=" + str(rand_row) + ", col=" + str(rand_col))
 
     def get_button_instance(self, row=0, col=0):
         return self.root.children[row].children[col]
+
+    def text_to_display(self,text=""):
+        self.display.text = text
 
     def on_toggle_click(self, instance):
         if instance.group == 'g1': self.hor_shift = instance.text
@@ -152,6 +159,8 @@ class MainApp(App):
         if pos_x != instance.x or pos_y != instance.y:
             anim += Animation(pos=(pos_x, pos_y), t='out_bounce', d=.1)
             anim.start(instance)
+            if not self.emulation:
+                self.text_to_display("\n\nSWAP: row=" + str(row) + ", col=" + str(col))
 
     def get_idx_children(self, instance):
         row = -1; col = -1
