@@ -14,6 +14,7 @@ from colors import allcolors, favcolors #, somecolors
 
 class MainApp(App):
     emulation = BooleanProperty(False)
+    reward = NumericProperty(0)
     def build(self):
         Clock.schedule_interval(self._update_clock, 1 / 60.)
         self.title = 'Adaptive UI'
@@ -21,8 +22,12 @@ class MainApp(App):
         self.shift_spacing = 10
         self.root = BoxLayout(orientation="vertical", padding=10)  #,size_hint_y=None)
         self.display = Label()
+        self.reward_lbl = Label(text='\n\nReward: 0')
         self.text_to_display("\n\nMinimalistic Display")
-        self.root.add_widget(self.display)
+        hor = BoxLayout(orientation="horizontal", padding=10, spacing=10, size_hint_y=None)
+        hor.add_widget(self.display)
+        hor.add_widget(self.reward_lbl)
+        self.root.add_widget(hor)
         hor = BoxLayout(orientation="horizontal", padding=10, spacing=10,size_hint_y=None)  # ,size_hint=(None, None))
         text = ["left","right","top","bottom"]
         for i in range(4):
@@ -65,7 +70,6 @@ class MainApp(App):
         instance.state="down"
         self.topcol = 0 if self.hor_shift == "right" else self.cols - 1
         self.toprow = 0 if self.ver_shift == "bottom" else self.rows - 1
-        #self.show_popup((instance.text).upper(), "Shift adapt")
 
     def on_btn_click(self, instance):
         freq = int(instance.text) + 1
@@ -126,6 +130,8 @@ class MainApp(App):
         if row == to_row and col == to_col: return
         self.root.children[row].children[col] = self.root.children[to_row].children[to_col]
         self.root.children[to_row].children[to_col] = instance
+        self.reward -= abs(row-to_row)+abs(col-to_col)
+        self.update_reward()
 
     def adapt_ui(self, instance, freq):
         row, col = self.get_idx_children(instance)
@@ -161,6 +167,12 @@ class MainApp(App):
             anim.start(instance)
             if not self.emulation:
                 self.text_to_display("\n\nSWAP: row=" + str(row) + ", col=" + str(col))
+        else:
+            self.reward += 1
+            self.update_reward()
+
+    def update_reward(self):
+        self.reward_lbl.text = "\n\nReward: " + str(self.reward)
 
     def get_idx_children(self, instance):
         row = -1; col = -1
