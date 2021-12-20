@@ -51,13 +51,10 @@ class MainApp(App):
         sm = self.root.ids.sm
         sm.switch_to(self.screen, direction='right')
         self.current_title = self.screen.name
-        self.text_to_display("\nMinimalistic Display")
+        self.text_to_display("Minimalistic Display")
 
     def load_screen(self,index=0):
-        self.display = Label(
-            #text='Minimalistic Display',
-            font_size='14sp',
-            size_hint=(1, 1), halign="left", valign="top")
+        self.display = Label()
         self.display.bind(size=self.display.setter('text_size'))
         self.title = 'Adaptive UI'
         self.shift_padding = 20

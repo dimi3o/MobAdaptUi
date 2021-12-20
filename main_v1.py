@@ -8,27 +8,38 @@ from kivy.properties import NumericProperty, BooleanProperty
 from kivy.uix.label import Label
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.popup import Popup
+from kivy.uix.slider import Slider
 from kivy.core.window import Window
 from kivy.clock import Clock
-from colors import allcolors, favcolors #, somecolors
+from colors import allcolors, favcolors, redclr, greenclr #, somecolors
 
 class MainApp(App):
     emulation = BooleanProperty(False)
+    adapt_frequency = NumericProperty(0)
     reward = NumericProperty(0)
     def build(self):
         Clock.schedule_interval(self._update_clock, 1 / 60.)
+        Clock.schedule_interval(self._update_clock_sec, 1)
         self.title = 'Adaptive UI'
         self.shift_padding = 20
         self.shift_spacing = 10
         self.root = BoxLayout(orientation="vertical", padding=10)  #,size_hint_y=None)
-        self.display = Label()
-        self.reward_lbl = Label(text='\n\nReward: 0')
-        self.text_to_display("\n\nMinimalistic Display")
-        hor = BoxLayout(orientation="horizontal", padding=10, spacing=10, size_hint_y=None)
+        self.display = Label(text="Action")
+        self.adapt_freq_lbl = Label(text="Adapt freq.(in 1 sec): 0", color=greenclr)
+        self.reward_lbl = Label(text='Reward: 0',color=redclr)
+        hor = BoxLayout(orientation="horizontal", padding=10, spacing=10, size_hint_y=None, height='48dp')
         hor.add_widget(self.display)
+        hor.add_widget(self.adapt_freq_lbl)
         hor.add_widget(self.reward_lbl)
         self.root.add_widget(hor)
-        hor = BoxLayout(orientation="horizontal", padding=10, spacing=10,size_hint_y=None)  # ,size_hint=(None, None))
+        hor = BoxLayout(orientation="horizontal", padding=10, spacing=10, size_hint_y=None, height='48dp')
+        self.adapt_request_slider = Slider(min=1, max=15, value=3, step=1)
+        self.adapt_request_slider.bind(value=self.on_move_adapt_request)
+        self.adapt_request_lbl = Label(text="Adapt request: "+str(self.adapt_request_slider.value), size_hint_x=None)
+        hor.add_widget(self.adapt_request_lbl)
+        hor.add_widget(self.adapt_request_slider)
+        self.root.add_widget(hor)
+        hor = BoxLayout(orientation="horizontal", padding=10, spacing=10, height='48dp')  # ,size_hint=(None, None))
         text = ["left","right","top","bottom"]
         for i in range(4):
             hor.add_widget(ToggleButton(size_hint_y=None, height='48dp', text=text[i],
@@ -48,20 +59,27 @@ class MainApp(App):
             self.root.add_widget(hor)
         return self.root
 
+    def on_move_adapt_request(self, instance, value):
+        self.adapt_request_lbl.text = "Adapt request: : {} ".format(int(self.adapt_request_slider.value))
+
     def toggle_emulation(self, instance):
         self.emulation = not self.emulation
+
+    def _update_clock_sec(self, dt):
+        self.adapt_frequency = 0
 
     def _update_clock(self, dt):
         if self.emulation:
             rand_row = random.randint(0, self.rows - 1)
             rand_col = random.randint(0, self.cols - 1)
             self.on_btn_click(self.get_button_instance(rand_row,rand_col))
-            self.text_to_display("\n\nEMULATION: row=" + str(rand_row) + ", col=" + str(rand_col))
+            self.text_to_display("EMULATION: row=" + str(rand_row) + ", col=" + str(rand_col))
+            self.adapt_freq_lbl.text = "Adapt freq.(in 1 sec): " + str(self.adapt_frequency)
 
     def get_button_instance(self, row=0, col=0):
         return self.root.children[row].children[col]
 
-    def text_to_display(self,text=""):
+    def text_to_display(self, text=""):
         self.display.text = text
 
     def on_toggle_click(self, instance):
@@ -73,7 +91,7 @@ class MainApp(App):
 
     def on_btn_click(self, instance):
         freq = int(instance.text) + 1
-        if freq % 3 == 0:
+        if freq % self.adapt_request_slider.value == 0:
             self.adapt_ui(instance, freq)
         instance.text = str(freq)
 
@@ -136,7 +154,7 @@ class MainApp(App):
     def adapt_ui(self, instance, freq):
         row, col = self.get_idx_children(instance)
         pos_x = instance.x; pos_y = instance.y
-        anim = Animation(pos=(instance.x, instance.y), t='out_bounce', d=.1)
+        anim = Animation(pos=(instance.x, instance.y), t='out_bounce', d=.03)
         if row >= 0 and col >= 0 and (row != self.toprow or col != self.topcol):
             # Column adapt
             if self.swap_topcol(freq, row, col):
@@ -163,16 +181,17 @@ class MainApp(App):
                     row = to_pos_row
 
         if pos_x != instance.x or pos_y != instance.y:
-            anim += Animation(pos=(pos_x, pos_y), t='out_bounce', d=.1)
+            anim += Animation(pos=(pos_x, pos_y), t='out_bounce', d=.03)
             anim.start(instance)
+            self.adapt_frequency += 1
             if not self.emulation:
-                self.text_to_display("\n\nSWAP: row=" + str(row) + ", col=" + str(col))
+                self.text_to_display("SWAP: row=" + str(row) + ", col=" + str(col))
         else:
             self.reward += 1
             self.update_reward()
 
     def update_reward(self):
-        self.reward_lbl.text = "\n\nReward: " + str(self.reward)
+        self.reward_lbl.text = "Reward: " + str(self.reward)
 
     def get_idx_children(self, instance):
         row = -1; col = -1
