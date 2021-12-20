@@ -1,5 +1,6 @@
-import random
+__version__ = '0.0.1.3'
 
+import random
 from kivy.app import App
 from kivy.animation import Animation
 from kivy.uix.button import Button
@@ -11,7 +12,7 @@ from kivy.uix.popup import Popup
 from kivy.uix.slider import Slider
 from kivy.core.window import Window
 from kivy.clock import Clock
-from colors import allcolors, favcolors, redclr, greenclr #, somecolors
+from colors import allcolors, redclr, greenclr
 
 class MainApp(App):
     emulation = BooleanProperty(False)
@@ -66,6 +67,7 @@ class MainApp(App):
         self.emulation = not self.emulation
 
     def _update_clock_sec(self, dt):
+        self.adapt_freq_lbl.text = "Adapt freq.(in 1 sec): " + str(self.adapt_frequency)
         self.adapt_frequency = 0
 
     def _update_clock(self, dt):
@@ -74,7 +76,6 @@ class MainApp(App):
             rand_col = random.randint(0, self.cols - 1)
             self.on_btn_click(self.get_button_instance(rand_row,rand_col))
             self.text_to_display("EMULATION: row=" + str(rand_row) + ", col=" + str(rand_col))
-            self.adapt_freq_lbl.text = "Adapt freq.(in 1 sec): " + str(self.adapt_frequency)
 
     def get_button_instance(self, row=0, col=0):
         return self.root.children[row].children[col]

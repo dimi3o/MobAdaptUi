@@ -1,3 +1,5 @@
+__version__ = '0.0.2'
+
 import random
 #from time import time
 from kivy.app import App
@@ -17,8 +19,6 @@ from colors import allcolors, favcolors #, somecolors
 #from android.permissions import request_permissions, Permission
 #request_permissions([Permission.READ_EXTERNAL_STORAGE, Permission.WRITE_EXTERNAL_STORAGE])
 #android.permissions = WRITE_EXTERNAL_STORAGE # permission in your buildozer.spec file.
-
-__version__ = '0.0.2'
 
 class MainScreen(Screen):
     fullscreen = BooleanProperty(False)
