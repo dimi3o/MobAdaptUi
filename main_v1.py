@@ -1,4 +1,4 @@
-__version__ = '0.0.1.3'
+__version__ = '0.0.1.4'
 
 import random
 from kivy.app import App
@@ -6,6 +6,7 @@ from kivy.animation import Animation
 from kivy.uix.button import Button
 from kivy.uix.togglebutton import ToggleButton
 from kivy.properties import NumericProperty, BooleanProperty
+from kivy_garden.graph import Graph, MeshLinePlot
 from kivy.uix.label import Label
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.popup import Popup
@@ -19,33 +20,47 @@ class MainApp(App):
     adapt_frequency = NumericProperty(0)
     reward = NumericProperty(0)
     def build(self):
-        Clock.schedule_interval(self._update_clock, 1 / 60.)
-        Clock.schedule_interval(self._update_clock_sec, 1)
+        # Clock.schedule_interval(self._update_clock, 1 / 60.)
+        # Clock.schedule_interval(self._update_clock_sec, 1)
         self.title = 'Adaptive UI'
         self.shift_padding = 20
         self.shift_spacing = 10
-        self.root = BoxLayout(orientation="vertical", padding=10)  #,size_hint_y=None)
-        self.display = Label(text="Action")
-        self.root.add_widget(self.display)
+
+        # Display Plot
+        self.graph = Graph(x_ticks_minor=0, # xlabel='T', ylabel='F'
+                           x_ticks_major=5, y_ticks_major=5,
+                           y_grid_label=True, x_grid_label=True, padding=5,
+                           x_grid=True, y_grid=True, xmin=0, xmax=1, ymin=0, ymax=30)
+        self.points = []
+        self.plot = MeshLinePlot(color=[1, 0, 0, 1])
+        self.graph.add_plot(self.plot)
+        graphlayout = BoxLayout(size_hint_y=None, height='250dp')
+        graphlayout.add_widget(self.graph)
+
+        # Main Layout
+        self.root = BoxLayout(orientation="vertical", padding=10)  # ,size_hint_y=None)
+        self.root.add_widget(graphlayout)
         self.adapt_freq_lbl = Label(text="Adapt freq.(in 1 sec): 0", color=greenclr)
+        self.root.add_widget(self.adapt_freq_lbl)
+        self.display = Label(text="Action")
         self.reward_lbl = Label(text='Reward: 0', color=redclr)
-        hor = BoxLayout(orientation="horizontal", padding=10, spacing=10, size_hint_y=None, height='48dp')
-        hor.add_widget(self.adapt_freq_lbl)
+        hor = BoxLayout(orientation="horizontal", padding=10, spacing=10)
+        hor.add_widget(self.display)
         hor.add_widget(self.reward_lbl)
         self.root.add_widget(hor)
-        hor = BoxLayout(orientation="horizontal", padding=10, spacing=10, size_hint_y=None, height='48dp')
+        hor = BoxLayout(orientation="horizontal", padding=10, spacing=10)
         self.adapt_request_slider = Slider(min=1, max=15, value=3, step=1)
         self.adapt_request_slider.bind(value=self.on_move_adapt_request)
         self.adapt_request_lbl = Label(text="Adapt request: "+str(self.adapt_request_slider.value))
         hor.add_widget(self.adapt_request_lbl)
         hor.add_widget(self.adapt_request_slider)
         self.root.add_widget(hor)
-        hor = BoxLayout(orientation="horizontal", padding=10, spacing=10, height='48dp')  # ,size_hint=(None, None))
+        hor = BoxLayout(orientation="horizontal", padding=10)  # ,size_hint=(None, None))
         text = ["left","right","top","bottom"]
         for i in range(4):
-            hor.add_widget(ToggleButton(size_hint_y=None, height='48dp', text=text[i],
+            hor.add_widget(ToggleButton(text=text[i],
                                         state="down" if i % 2 != 0 else "normal", group="g1" if i < 2 else "g2",on_release=self.on_toggle_click))
-        hor.add_widget(ToggleButton(size_hint_y=None, height='48dp',text="EMU",state="normal",on_release=self.toggle_emulation))
+        hor.add_widget(ToggleButton(text="EMU",state="normal",on_release=self.toggle_emulation))
         self.root.add_widget(hor)
         self.hor_shift = "right"; self.ver_shift = "bottom"
         self.topcol = 0; self.toprow = 0
@@ -65,8 +80,21 @@ class MainApp(App):
 
     def toggle_emulation(self, instance):
         self.emulation = not self.emulation
+        if self.emulation:
+            Clock.schedule_interval(self._update_clock, 1 / 60.)
+            Clock.schedule_interval(self._update_clock_sec, 1)
+        else:
+            Clock.unschedule(self._update_clock)
+            Clock.unschedule(self._update_clock_sec)
 
     def _update_clock_sec(self, dt):
+        if self.adapt_frequency > 0:
+            if self.graph.ymax < self.adapt_frequency:
+                self.graph.ymax = self.adapt_frequency
+            self.graph.xmax += 1
+            self.points.append((self.graph.xmax, self.adapt_frequency))
+            self.plot.points = [(x, y) for x, y in self.points]
+        # self.plot.points = [(x, y) for x, y in self.points]
         self.adapt_freq_lbl.text = "Adapt freq.(in 1 sec): " + str(self.adapt_frequency)
         self.adapt_frequency = 0
 
@@ -76,6 +104,10 @@ class MainApp(App):
             rand_col = random.randint(0, self.cols - 1)
             self.on_btn_click(self.get_button_instance(rand_row,rand_col))
             self.text_to_display("EMULATION: row=" + str(rand_row) + ", col=" + str(rand_col))
+            # if self.graph.ymax < self.adapt_frequency:
+            #     self.graph.ymax = self.adapt_frequency
+            # self.graph.xmax += .1
+            # self.points.append((self.graph.xmax, self.adapt_frequency))
 
     def get_button_instance(self, row=0, col=0):
         return self.root.children[row].children[col]
