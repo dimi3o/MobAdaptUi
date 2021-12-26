@@ -28,8 +28,8 @@ class MainApp(App):
     tb_strategy = ListProperty([])
     shift_spacing = NumericProperty(10)
     shift_padding = NumericProperty(20)
-    rows = NumericProperty(6)
-    cols = NumericProperty(6)
+    rows = NumericProperty(7)
+    cols = NumericProperty(7)
 
     def __init__(self, **kwargs):
         super(MainApp, self).__init__(**kwargs)
@@ -255,7 +255,10 @@ class MainApp(App):
                     if f < freq: return r, c
             extc += 1
             extr += 1
-            if self.top_row-extr == row or self.top_col-extc == col: break
+            if abs(row-self.top_row)>abs(col-self.top_col):
+                if self.top_row-extr == row or self.top_row+extr == row: break
+            else:
+                if self.top_col-extc == col or self.top_col+extc == col: break
         return row, col
 
     def adapt_ui(self, instance, freq):
