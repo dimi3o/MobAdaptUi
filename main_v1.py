@@ -50,8 +50,7 @@ class MainApp(App):
                            x_ticks_major=5, y_ticks_major=15,
                            y_grid_label=True, x_grid_label=True, padding=5,
                            x_grid=True, y_grid=True, xmin=0, xmax=1, ymin=0, ymax=30)
-        self.plot = LinePlot(line_width=2, color=[1, 0, 0, 1])
-        # self.plot = MeshLinePlot(color=[1, 0, 0, 1])
+        self.plot = LinePlot(line_width=2, color=[1, 0, 0, 1]) #MeshLinePlot(color=[1, 0, 0, 1])
         self.graph.add_plot(self.plot)
         graphlayout = BoxLayout(size_hint_y=None, height='200dp')
         graphlayout.add_widget(self.graph)
@@ -142,8 +141,8 @@ class MainApp(App):
                 else: i = 1; j = 3
                 self.tb_strategy[i].state = 'down'
                 self.tb_strategy[j].state = 'down'
-        # self.top_col = 0 if self.hor_shift == 'right' else self.cols - 1
-        # self.top_row = 0 if self.ver_shift == 'bottom' else self.rows - 1
+                self.hor_shift = self.tb_strategy[i].text
+                self.ver_shift = self.tb_strategy[j].text
 
     def on_move_adapt_request(self, instance, value):
         self.adapt_request_lbl.text = 'Adapt request: : {} '.format(int(self.adapt_request_slider.value))
@@ -265,7 +264,7 @@ class MainApp(App):
         row, col = self.get_idx_children(instance)
         pos_x = instance.x
         pos_y = instance.y
-        anim = Animation(pos=(instance.x, instance.y), t='out_bounce', d=.03)
+        anim = Animation(pos=(instance.x, instance.y), t='out_bounce', d=.02)
         if row >= 0 and col >= 0 and (row != self.top_row or col != self.top_col):
             if self.adapt_strategy == AdaptStrategy.Center:
                 to_pos_row, to_pos_col = self.swap_to_center(freq, row, col)
@@ -299,8 +298,9 @@ class MainApp(App):
                         row = to_pos_row
 
         if pos_x != instance.x or pos_y != instance.y:
-            anim += Animation(pos=(pos_x, pos_y), t='out_bounce', d=.03)
-            anim.start(instance)
+            if pos_x > 0 and pos_x < Window.width and pos_y > 0 and pos_y < Window.height:
+                anim += Animation(pos=(pos_x, pos_y), t='out_bounce', d=.02)
+                anim.start(instance)
             self.adapt_frequency += 1
             if not self.emulation:
                 self.text_to_display('SWAP: row=' + str(row) + ', col=' + str(col))
