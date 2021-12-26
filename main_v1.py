@@ -47,7 +47,7 @@ class MainApp(App):
 
         # Plot
         self.graph = Graph(x_ticks_minor=0,  # xlabel='T', ylabel='F'
-                           x_ticks_major=10, y_ticks_major=15,
+                           x_ticks_major=5, y_ticks_major=15,
                            y_grid_label=True, x_grid_label=True, padding=5,
                            x_grid=True, y_grid=True, xmin=0, xmax=1, ymin=0, ymax=30)
         self.plot = LinePlot(line_width=2, color=[1, 0, 0, 1])
@@ -120,6 +120,10 @@ class MainApp(App):
         self.graph.xmin=0; self.graph.xmax=1; self.graph.ymin=0; self.graph.ymax=30;
 
     def on_change_adapt_strategy(self, instance):
+        if self.adapt_strategy.value == 4:
+            if instance.group == 'g0' or instance.group == 'g1':
+                instance.state = 'normal'
+                return
         self.adapt_strategy, self.top_col, self.top_row = AdaptStrategy.change_strategy(instance, self.adapt_strategy,
                                                                                         self.cols, self.rows)
         if instance.group == 'g0':
