@@ -193,7 +193,7 @@ class MainApp(App):
         elif self.reward_graph.ymin > self.reward:
             self.reward_graph.ymin = self.reward
         if abs(self.reward) > self.reward_graph.y_ticks_major * 5: self.reward_graph.y_ticks_major *= 2
-        if self.reward_graph.xmax > self.reward_graph.x_ticks_major * 10: self.reward_graph.x_ticks_major *= 4
+        if self.reward_graph.xmax > self.reward_graph.x_ticks_major * 5: self.reward_graph.x_ticks_major *= 4
         self.reward_points.append((self.reward_graph.xmax - 1, self.reward))
         self.reward_plot.points = [(x, y) for x, y in self.reward_points]
         self.reward_graph.xmax += 1
