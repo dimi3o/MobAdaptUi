@@ -7,7 +7,7 @@ The number of clicks on the button is the criterion of adaptation. We adapt the 
 
 Version 0.0.1.5 (26.12.2021)
 
-![img.png](data/interface0015.png)
+![img.png](data/interface0016.png)
 
 ## Android
 You can build for Android using buildozer on Linux.
