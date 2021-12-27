@@ -18,7 +18,7 @@ class Logic(BoxLayout):
         self.step = Window.width / 1000.
 
     def start(self):
-        self.ids.graph.add_plot(self.plot)
+        self.ids.freq_graph.add_plot(self.plot)
         Clock.schedule_interval(self.get_value, 0.001)
 
     def stop(self):
@@ -32,9 +32,9 @@ class Logic(BoxLayout):
             self.x_axis += self.step
         else:
             self.x_axis = 0
-            self.ids.graph.remove_plot(self.plot)
+            self.ids.freq_graph.remove_plot(self.plot)
             self.plot = MeshLinePlot(color=[1, 0, 0, 1])
-            self.ids.graph.add_plot(self.plot)
+            self.ids.freq_graph.add_plot(self.plot)
 
 class RealTimeMicrophone(App):
     # def build(self):
