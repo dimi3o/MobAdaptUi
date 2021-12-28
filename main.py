@@ -1,5 +1,3 @@
-__version__ = '0.0.1.6'
-
 import random
 from kivy.app import App
 from kivy.animation import Animation
@@ -13,13 +11,39 @@ from kivy.uix.popup import Popup
 from kivy.uix.slider import Slider
 from kivy.core.window import Window
 from kivy.clock import Clock
+from kivy.graphics import Color, Rectangle
 from colors import allcolors, redclr, greenclr
 from strategy import AdaptStrategy
+
+
+WhiteBackColor = True
+__version__ = '0.0.1.6'
 
 
 def get_hor_boxlayout(orientation='horizontal', padding=10, spacing=10):
     return BoxLayout(orientation=orientation, padding=padding, spacing=spacing)
 
+
+def get_graph_widget(x_ticks_major=5, y_ticks_major=10,xmin=0, xmax=1, ymin=0, ymax=30,xlabel=None,white=WhiteBackColor):
+    graph_theme = {
+        'label_options': {
+            'color': [0, 0, 0, 1],  # color of tick labels and titles
+            'bold': False},
+        'background_color': [1, 1, 1, 1],  # back ground color of canvas
+        'tick_color': [0, 0, 0, 1],  # ticks and grid
+        'border_color': [0, 0, 0, 1]}  # border drawn around each graph
+    if WhiteBackColor:
+        graph = Graph(**graph_theme)
+    else:
+        graph = Graph()
+    if xlabel is not None: graph.xlabel = xlabel
+    graph.x_ticks_minor=0
+    graph.x_ticks_major=x_ticks_major; graph.y_ticks_major=y_ticks_major
+    graph.y_grid_label=True; graph.x_grid_label=True
+    graph.padding=5
+    graph.x_grid=True; graph.y_grid=True
+    graph.xmin=xmin; graph.xmax=xmax; graph.ymin=ymin; graph.ymax=ymax
+    return graph
 
 class MainApp(App):
     emulation = BooleanProperty(False)
@@ -45,22 +69,18 @@ class MainApp(App):
     def build(self):
         # Root Layout
         self.root = BoxLayout(orientation='vertical', padding=10)  # ,size_hint_y=None)
+        if WhiteBackColor: self.root.bind(size=self._update_rect, pos=self._update_rect)
 
         # Plot
         hor = BoxLayout(orientation='horizontal', padding=10, size_hint_y=None, height='10dp')
-        hor.add_widget(Label(text='Adapt Frequency'))
-        hor.add_widget(Label(text='Reward'))
+        hor.add_widget(Label(text='Adapt Frequency', color=[0, 0, 0, 1] if WhiteBackColor else [1, 1, 1, 1]))
+        hor.add_widget(Label(text='Reward', color=[0, 0, 0, 1] if WhiteBackColor else [1, 1, 1, 1]))
         self.root.add_widget(hor)
-        self.freq_graph = Graph(x_ticks_minor=0,  # xlabel='T'
-                                x_ticks_major=5, y_ticks_major=10,
-                                y_grid_label=True, x_grid_label=True, padding=5,
-                                x_grid=True, y_grid=True, xmin=0, xmax=1, ymin=0, ymax=30)
+        self.freq_graph = get_graph_widget(5, 10, 0, 1, 0, 30, 'Time')
         self.freq_plot = LinePlot(line_width=2, color=[1, 0, 0, 1])
         self.freq_graph.add_plot(self.freq_plot)
-        self.reward_graph = Graph(x_ticks_minor=0,
-                                  x_ticks_major=5, y_ticks_major=100,
-                                  y_grid_label=True, x_grid_label=True, padding=5,
-                                  x_grid=True, y_grid=True, xmin=0, xmax=1, ymin=0, ymax=1)
+        self.reward_graph = get_graph_widget(5, 100, 0, 1, 0, 1, 'Time')
+        self.reward_graph.tick_color = [0, 0, 0, 1]
         self.reward_plot = LinePlot(line_width=2, color=[1, 0, 0, 1])
         self.reward_graph.add_plot(self.reward_plot)
         graph_layout = BoxLayout(orientation='horizontal', size_hint_y=None, height='200dp')
@@ -71,6 +91,7 @@ class MainApp(App):
         # Labels Panel
         self.adapt_freq_lbl = Label(text='F:0', color=greenclr)
         self.display = Label(text='Action')
+        if WhiteBackColor: self.display.color = [0, 0, 0, 1]
         self.reward_lbl = Label(text='R: 0', color=redclr)
         hor = get_hor_boxlayout()
         hor.add_widget(self.display)
@@ -81,7 +102,11 @@ class MainApp(App):
         hor = get_hor_boxlayout()
         self.adapt_request_slider = Slider(min=1, max=15, value=3, step=1)
         self.adapt_request_slider.bind(value=self.on_move_adapt_request)
+        if WhiteBackColor:
+            self.adapt_request_slider.value_track = True
+            self.adapt_request_slider.value_track_color = [0, 0, 0, 1]
         self.adapt_request_lbl = Label(text='Adapt request: ' + str(self.adapt_request_slider.value))
+        if WhiteBackColor: self.adapt_request_lbl.color = [0, 0, 0, 1]
         hor.add_widget(self.adapt_request_lbl)
         hor.add_widget(self.adapt_request_slider)
         self.root.add_widget(hor)
@@ -106,7 +131,16 @@ class MainApp(App):
                                       background_color=random.choice(allcolors),
                                       on_press=self.on_btn_click))
             self.root.add_widget(hor)
+
+        if WhiteBackColor:
+            with self.root.canvas.before:
+                Color(1, 1, 1)
+                self.rect = Rectangle(size=self.root.size, pos=self.root.pos)
         return self.root
+
+    def _update_rect(self, instance, value):
+        self.rect.pos = instance.pos
+        self.rect.size = instance.size
 
     def on_reset(self, instance):
         instance.state = 'normal'
@@ -183,7 +217,8 @@ class MainApp(App):
             self.freq_graph.ymax = self.adapt_frequency
         if self.adapt_frequency > self.freq_graph.y_ticks_major * 5: self.freq_graph.y_ticks_major *= 2
         if self.freq_graph.xmax > self.freq_graph.x_ticks_major * 5: self.freq_graph.x_ticks_major *= 4
-        self.freq_points.append((self.freq_graph.xmax - 1, self.adapt_frequency))
+        #if self.freq_graph.xmax > 1: self.freq_graph.xmin=1
+        self.freq_points.append((self.freq_graph.xmax, self.adapt_frequency))
         self.freq_plot.points = [(x, y) for x, y in self.freq_points]
         self.freq_graph.xmax += 1
 
@@ -194,7 +229,8 @@ class MainApp(App):
             self.reward_graph.ymin = self.reward
         if abs(self.reward) > self.reward_graph.y_ticks_major * 5: self.reward_graph.y_ticks_major *= 2
         if self.reward_graph.xmax > self.reward_graph.x_ticks_major * 5: self.reward_graph.x_ticks_major *= 4
-        self.reward_points.append((self.reward_graph.xmax - 1, self.reward))
+        #if self.reward_graph.xmax > 1: self.reward_graph.xmin = 1
+        self.reward_points.append((self.reward_graph.xmax, self.reward))
         self.reward_plot.points = [(x, y) for x, y in self.reward_points]
         self.reward_graph.xmax += 1
 
