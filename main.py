@@ -161,12 +161,12 @@ class MainApp(App):
         self.freq_points = []
         self.freq_graph.x_ticks_major = 5; self.freq_graph.y_ticks_major = 10
         self.freq_graph.xmin = 0; self.freq_graph.xmax = 1; self.freq_graph.ymin = 0; self.freq_graph.ymax = 30
-        self.reward_graph.remove_plot(self.reward_plot)
-        self.reward_plot = LinePlot(line_width=2, color=[1, 0, 0, 1])
-        self.reward_graph.add_plot(self.reward_plot)
-        self.reward_points = []
-        self.reward_graph.x_ticks_major = 5; self.reward_graph.y_ticks_major = 100
-        self.reward_graph.xmin = 0; self.reward_graph.xmax = 1; self.reward_graph.ymin = 0; self.reward_graph.ymax = 1
+        # self.reward_graph.remove_plot(self.reward_plot)
+        # self.reward_plot = LinePlot(line_width=2, color=[1, 0, 0, 1])
+        # self.reward_graph.add_plot(self.reward_plot)
+        # self.reward_points = []
+        # self.reward_graph.x_ticks_major = 5; self.reward_graph.y_ticks_major = 100
+        # self.reward_graph.xmin = 0; self.reward_graph.xmax = 1; self.reward_graph.ymin = 0; self.reward_graph.ymax = 1
 
     def on_change_adapt_strategy(self, instance):
         if self.adapt_strategy.value == 4 or self.adapt_strategy.value == 5:
