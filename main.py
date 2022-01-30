@@ -74,18 +74,18 @@ class MainApp(App):
         # Plot
         hor = BoxLayout(orientation='horizontal', padding=10, size_hint_y=None, height='10dp')
         hor.add_widget(Label(text='Частота адаптации (в 1 сек.)', color=[0, 0, 0, 1] if WhiteBackColor else [1, 1, 1, 1])) #Adapt Frequency
-        #hor.add_widget(Label(text='Reward', color=[0, 0, 0, 1] if WhiteBackColor else [1, 1, 1, 1]))
+        hor.add_widget(Label(text='Reward', color=[0, 0, 0, 1] if WhiteBackColor else [1, 1, 1, 1]))
         self.root.add_widget(hor)
         self.freq_graph = get_graph_widget(5, 10, 0, 1, 0, 30, 'Время, сек.') #'Time')
         self.freq_plot = LinePlot(line_width=2, color=[1, 0, 0, 1])
         self.freq_graph.add_plot(self.freq_plot)
-        # self.reward_graph = get_graph_widget(5, 100, 0, 1, 0, 1, 'Time')
-        # self.reward_graph.tick_color = [0, 0, 0, 1]
-        # self.reward_plot = LinePlot(line_width=2, color=[1, 0, 0, 1])
-        # self.reward_graph.add_plot(self.reward_plot)
+        self.reward_graph = get_graph_widget(5, 100, 0, 1, 0, 1, 'Time')
+        self.reward_graph.tick_color = [0, 0, 0, 1]
+        self.reward_plot = LinePlot(line_width=2, color=[1, 0, 0, 1])
+        self.reward_graph.add_plot(self.reward_plot)
         graph_layout = BoxLayout(orientation='horizontal', size_hint_y=None, height='200dp')
         graph_layout.add_widget(self.freq_graph)
-        # graph_layout.add_widget(self.reward_graph)
+        graph_layout.add_widget(self.reward_graph)
         self.root.add_widget(graph_layout)
 
         # Labels Panel
@@ -161,12 +161,12 @@ class MainApp(App):
         self.freq_points = []
         self.freq_graph.x_ticks_major = 5; self.freq_graph.y_ticks_major = 10
         self.freq_graph.xmin = 0; self.freq_graph.xmax = 1; self.freq_graph.ymin = 0; self.freq_graph.ymax = 30
-        # self.reward_graph.remove_plot(self.reward_plot)
-        # self.reward_plot = LinePlot(line_width=2, color=[1, 0, 0, 1])
-        # self.reward_graph.add_plot(self.reward_plot)
-        # self.reward_points = []
-        # self.reward_graph.x_ticks_major = 5; self.reward_graph.y_ticks_major = 100
-        # self.reward_graph.xmin = 0; self.reward_graph.xmax = 1; self.reward_graph.ymin = 0; self.reward_graph.ymax = 1
+        self.reward_graph.remove_plot(self.reward_plot)
+        self.reward_plot = LinePlot(line_width=2, color=[1, 0, 0, 1])
+        self.reward_graph.add_plot(self.reward_plot)
+        self.reward_points = []
+        self.reward_graph.x_ticks_major = 5; self.reward_graph.y_ticks_major = 100
+        self.reward_graph.xmin = 0; self.reward_graph.xmax = 1; self.reward_graph.ymin = 0; self.reward_graph.ymax = 1
 
     def on_change_adapt_strategy(self, instance):
         if self.adapt_strategy.value == 4 or self.adapt_strategy.value == 5:
@@ -223,16 +223,16 @@ class MainApp(App):
         self.freq_graph.xmax += 1
 
         # Reward Plot
-        # if self.reward_graph.ymax < self.reward:
-        #     self.reward_graph.ymax = self.reward
-        # elif self.reward_graph.ymin > self.reward:
-        #     self.reward_graph.ymin = self.reward
-        # if abs(self.reward) > self.reward_graph.y_ticks_major * 5: self.reward_graph.y_ticks_major *= 2
-        # if self.reward_graph.xmax > self.reward_graph.x_ticks_major * 5: self.reward_graph.x_ticks_major *= 4
-        # #if self.reward_graph.xmax > 1: self.reward_graph.xmin = 1
-        # self.reward_points.append((self.reward_graph.xmax, self.reward))
-        # self.reward_plot.points = [(x, y) for x, y in self.reward_points]
-        # self.reward_graph.xmax += 1
+        if self.reward_graph.ymax < self.reward:
+            self.reward_graph.ymax = self.reward
+        elif self.reward_graph.ymin > self.reward:
+            self.reward_graph.ymin = self.reward
+        if abs(self.reward) > self.reward_graph.y_ticks_major * 5: self.reward_graph.y_ticks_major *= 2
+        if self.reward_graph.xmax > self.reward_graph.x_ticks_major * 5: self.reward_graph.x_ticks_major *= 4
+        if self.reward_graph.xmax > 1: self.reward_graph.xmin = 1
+        self.reward_points.append((self.reward_graph.xmax, self.reward))
+        self.reward_plot.points = [(x, y) for x, y in self.reward_points]
+        self.reward_graph.xmax += 1
 
         # Adapt Freq Label
         self.adapt_freq_lbl.text = 'F: ' + str(self.adapt_frequency)  # 'Adapt freq.(in 1 sec): '
