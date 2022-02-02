@@ -57,7 +57,7 @@ class MainApp(App):
 
     def __init__(self, **kwargs):
         super(MainApp, self).__init__(**kwargs)
-        self.title = 'Адапативный Мобильный ПИ' # 'Adaptive Mobile UI'
+        self.title = 'Адаптивный Мобильный ПИ' # 'Adaptive Mobile UI'
         self.hor_shift = 'right'
         self.ver_shift = 'bottom'
         self.adapt_strategy = AdaptStrategy.RightBottom
