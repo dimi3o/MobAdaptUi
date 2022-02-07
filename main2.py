@@ -30,6 +30,7 @@ class MainApp(App):
         self.sm.current = 'scr1'
 
     def to_scr2_btn_click(self, instance):
+        self.sm.transition.direction = 'left'
         self.sm.current = 'scr2'
 
 if __name__ == "__main__":
