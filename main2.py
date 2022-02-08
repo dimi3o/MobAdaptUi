@@ -26,7 +26,7 @@ def get_textcolor():
 def get_hor_boxlayout(orientation='horizontal', padding=10, spacing=10):
     return BoxLayout(orientation=orientation, padding=padding, spacing=spacing)
 
-def get_random_widget(layout):
+def get_random_widget():
     widgets = ['Image', 'TextInput', 'Label', 'Button', 'CheckBox', 'Slider', 'Switch', 'Spinner', 'ProgressBar']
     selected_name = random.choice(widgets)
     if selected_name == 'Image': return Image(source='data/icons/bug1.png')
@@ -51,7 +51,7 @@ class MainApp(App):
     def build(self):
         # PROPERTIES LAYOUT
         self.root2 = BoxLayout(orientation='vertical', padding=10)
-        self.root2.add_widget(Label(text='List of properties...', color=get_textcolor()))
+        self.root2.add_widget(Label(text='Image, TextInput, Label, Button, CheckBox, Slider, Switch, Spinner, ProgressBar', color=get_textcolor()))
         self.rows_slider = Slider(min=1, max=10, value=5, step=1)
         self.cols_slider = Slider(min=1, max=10, value=5, step=1)
         self.root2.add_widget(self.rows_slider)
@@ -85,11 +85,8 @@ class MainApp(App):
         self.widgets_layout.clear_widgets()
         for i in range(self.rows_slider.value):
             hor = get_hor_boxlayout()
-            if i % random.randint(2, 3) == 0:
-                hor.add_widget(get_random_widget(self.widgets_layout))
-            else:
-                for j in range(self.cols_slider.value):
-                    hor.add_widget(get_random_widget(self.widgets_layout))
+            for j in range(random.randint(1,self.cols_slider.value-1)):
+                hor.add_widget(get_random_widget())
             self.widgets_layout.add_widget(hor)
 
     def to_scr1_btn_click(self, instance):
