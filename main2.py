@@ -30,7 +30,7 @@ def get_random_widget():
     widgets = ['Image', 'TextInput', 'Label', 'Button', 'CheckBox', 'Slider', 'Switch', 'Spinner', 'ProgressBar']
     selected_name = random.choice(widgets)
     if selected_name == 'Image': return Image(source='data/icons/bug1.png')
-    elif selected_name == 'TextInput': return TextInput()#(font_size = 20, size_hint_y = None, height = 50)
+    elif selected_name == 'TextInput': return TextInput(text='textinput')#(font_size = 20, size_hint_y = None, height = 50)
     elif selected_name == 'Label': return Label(text='label', color=get_textcolor())
     elif selected_name == 'Button': return Button(text='button', background_color=random.choice(allcolors))#on_press=self.on_btn_click))
     elif selected_name == 'CheckBox': return CheckBox(active = True)
