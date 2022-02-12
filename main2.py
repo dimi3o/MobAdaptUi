@@ -99,7 +99,8 @@ class MainApp(App):
                 s = Scatter(do_rotation=False, do_scale=False, auto_bring_to_front=False)
                 hor.add_widget(s)
                 w = Widgets.get_random_widget()
-                w.height = f'{300/self.cols_slider.value}dp'
+                w.width = f'{550/self.cols_slider.value}dp'
+                w.height = f'{300/self.rows_slider.value}dp'
                 s.add_widget(w)
             self.sandbox_widgets.add_widget(hor)
 
