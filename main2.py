@@ -1,45 +1,23 @@
 import random
+from kivywidgets import Widgets
 from kivy.app import App
-from kivy.properties import NumericProperty, BooleanProperty, StringProperty, ListProperty
+from kivy.properties import NumericProperty
 from kivy.uix.label import Label
 from kivy.uix.button import Button
-from kivy.uix.image import Image
-from kivy.uix.textinput import TextInput
-from kivy.uix.checkbox import CheckBox
 from kivy.uix.slider import Slider
-from kivy.uix.switch import Switch
-from kivy.uix.spinner import Spinner
-from kivy.uix.progressbar import ProgressBar
 from kivy.uix.scatter import Scatter
-from kivy.graphics import Ellipse
-from kivy.clock import Clock
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.floatlayout import FloatLayout
 from kivy.graphics import Color, Rectangle
-from colors import allcolors, redclr, greenclr
 
 WhiteBackColor = True
-__version__ = '0.0.2.0'
+__version__ = '0.0.2.1'
 
 def get_textcolor():
     return [0, 0, 0, 1] if WhiteBackColor else [1, 1, 1, 1]
 
 def get_hor_boxlayout(orientation='horizontal', padding=10, spacing=10):
     return BoxLayout(orientation=orientation, padding=padding, spacing=spacing)
-
-def get_random_widget():
-    widgets = ['Image', 'TextInput', 'Label', 'Button', 'CheckBox', 'Slider', 'Switch', 'Spinner', 'ProgressBar']
-    selected_name = random.choice(widgets)
-    if selected_name == 'Image': return Image(source='data/icons/bug1.png')
-    elif selected_name == 'TextInput': return TextInput(text='textinput')#(font_size = 20, size_hint_y = None, height = 50)
-    elif selected_name == 'Label': return Label(text='label', color=get_textcolor())
-    elif selected_name == 'Button': return Button(text='button', background_color=random.choice(allcolors))#on_press=self.on_btn_click))
-    elif selected_name == 'CheckBox': return CheckBox(active = True)
-    elif selected_name == 'Slider': return Slider(min=1, max=10, value=1, step=1)
-    elif selected_name == 'Switch': return Switch(active = True)
-    elif selected_name == 'Spinner': return Spinner(text ="Spinner", values =("Python", "Java", "C++", "C", "C#", "PHP"), background_color =(0.784, 0.443, 0.216, 1))
-    elif selected_name == 'ProgressBar': return ProgressBar(max = 1000, value = 750)
 
 class MainApp(App):
     sm = ScreenManager()
@@ -53,25 +31,42 @@ class MainApp(App):
     def build(self):
         # PROPERTIES LAYOUT
         self.root2 = BoxLayout(orientation='vertical', padding=10)
-        self.root2.add_widget(Label(text='Image, TextInput, Label, Button, CheckBox, Slider, Switch, Spinner, ProgressBar', color=get_textcolor()))
+        self.root2.add_widget(Label(text='Image, TextInput, Label,\nButton, CheckBox, Slider,\nSwitch, Spinner, ProgressBar', color=get_textcolor()))
         self.rows_slider = Slider(min=1, max=10, value=5, step=1)
         self.cols_slider = Slider(min=1, max=10, value=5, step=1)
-        self.root2.add_widget(self.rows_slider)
-        self.root2.add_widget(self.cols_slider)
+        hor = get_hor_boxlayout()
+        hor.add_widget(Label(text='ROWS:', color=get_textcolor(), size_hint_x=None, width='50dp'))
+        hor.add_widget(self.rows_slider)
+        self.root2.add_widget(hor)
+        hor = get_hor_boxlayout()
+        hor.add_widget(Label(text='COLUMNS:', color=get_textcolor(), size_hint_x=None, width='50dp'))
+        hor.add_widget(self.cols_slider)
+        self.root2.add_widget(hor)
         self.root2.add_widget(Button(text='main screen', size_hint_y=None, height='30dp', on_press=self.to_scr1_btn_click))
-        # MAIN SCREEN ROOT LAYOUT
+        self.add_screen('properties', self.root2)
+
+        # SANDBOX LAYOUT
+        self.root3 = BoxLayout(orientation='vertical', padding=10)
+        self.root3.add_widget(Button(text='rebuild', size_hint_y=None, height='30dp', on_press=self.sandbox_rebuild_btn_click))
+        self.sandbox_widgets = BoxLayout(orientation='vertical', padding=0, spacing=0)
+        self.sandbox_rebuild_btn_click(self)
+        self.root3.add_widget(self.sandbox_widgets)
+        self.root3.add_widget(Button(text='mainscreen', size_hint_y=None, height='30dp', on_press=self.to_scr1_btn_click_left))
+        self.add_screen('sandbox', self.root3)
+
+        # MAINSCREEN LAYOUT
         self.root1 = BoxLayout(orientation='vertical', padding=10)
-        self.root1.add_widget(Button(text='rebuild of layout', size_hint_y=None, height='30dp', on_press=self.rebuild_btn_click))
-        self.widgets_layout = BoxLayout(orientation='vertical')
-        self.rebuild_btn_click(self)
-        self.root1.add_widget(self.widgets_layout)
-        self.root1.add_widget(Button(text='properties screen', size_hint_y=None, height='30dp', on_press=self.to_scr2_btn_click))
-        scr1 = Screen(name='mainscreen')
-        scr1.add_widget(self.root1)
-        scr2 = Screen(name='properties')
-        scr2.add_widget(self.root2)
-        self.sm.add_widget(scr1)
-        self.sm.add_widget(scr2)
+        self.root1.add_widget(Button(text='rebuild', size_hint_y=None, height='30dp', on_press=self.mainscreen_rebuild_btn_click))
+        self.mainscreen_widgets = BoxLayout(orientation='vertical', padding=10, spacing=10)
+        self.mainscreen_rebuild_btn_click(self)
+        self.root1.add_widget(self.mainscreen_widgets)
+        hor = BoxLayout(orientation='horizontal', padding=0, spacing=0, size_hint_y=None, height='10dp')
+        hor.add_widget(Button(text='sandbox', size_hint_y=None, height='30dp', on_press=self.to_scr3_btn_click))
+        hor.add_widget(Button(text='properties', size_hint_y=None, height='30dp', on_press=self.to_scr2_btn_click))
+        self.root1.add_widget(hor)
+        self.add_screen('mainscreen', self.root1)
+        self.to_scr1_btn_click(self)
+
         if WhiteBackColor:
             self.sm.bind(size=self._update_rect, pos=self._update_rect)
             with self.sm.canvas.before:
@@ -79,25 +74,50 @@ class MainApp(App):
                 self.rect = Rectangle(size=self.sm.size, pos=self.sm.pos)
         return self.sm
 
+    def add_screen(self, name, widget):
+        scr = Screen(name=name)
+        scr.add_widget(widget)
+        self.sm.add_widget(scr)
+
     def _update_rect(self, instance, value):
         self.rect.pos = instance.pos
         self.rect.size = instance.size
 
-    def rebuild_btn_click(self, instance):
-        self.widgets_layout.clear_widgets()
+    def mainscreen_rebuild_btn_click(self, instance):
+        self.mainscreen_widgets.clear_widgets()
         for i in range(self.rows_slider.value):
             hor = get_hor_boxlayout()
             for j in range(random.randint(1,self.cols_slider.value-1)):
-                hor.add_widget(get_random_widget())
-            self.widgets_layout.add_widget(hor)
+                hor.add_widget(Widgets.get_random_widget())
+            self.mainscreen_widgets.add_widget(hor)
+
+    def sandbox_rebuild_btn_click(self, instance):
+        self.sandbox_widgets.clear_widgets()
+        for i in range(self.rows_slider.value):
+            hor = get_hor_boxlayout('horizontal', 0, 0)
+            for j in range(self.cols_slider.value):
+                s = Scatter(do_rotation=False, do_scale=False, auto_bring_to_front=False)
+                hor.add_widget(s)
+                w = Widgets.get_random_widget()
+                w.height = f'{300/self.cols_slider.value}dp'
+                s.add_widget(w)
+            self.sandbox_widgets.add_widget(hor)
 
     def to_scr1_btn_click(self, instance):
         self.sm.transition.direction = 'right'
         self.sm.current = 'mainscreen'
 
+    def to_scr1_btn_click_left(self, instance):
+        self.sm.transition.direction = 'left'
+        self.sm.current = 'mainscreen'
+
     def to_scr2_btn_click(self, instance):
         self.sm.transition.direction = 'left'
         self.sm.current = 'properties'
+
+    def to_scr3_btn_click(self, instance):
+        self.sm.transition.direction = 'right'
+        self.sm.current = 'sandbox'
 
     def on_btn_click(self, instance):
         freq = int(instance.text) + 1
