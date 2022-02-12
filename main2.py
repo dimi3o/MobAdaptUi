@@ -10,10 +10,12 @@ from kivy.uix.slider import Slider
 from kivy.uix.switch import Switch
 from kivy.uix.spinner import Spinner
 from kivy.uix.progressbar import ProgressBar
+from kivy.uix.scatter import Scatter
 from kivy.graphics import Ellipse
 from kivy.clock import Clock
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.floatlayout import FloatLayout
 from kivy.graphics import Color, Rectangle
 from colors import allcolors, redclr, greenclr
 
@@ -64,9 +66,9 @@ class MainApp(App):
         self.rebuild_btn_click(self)
         self.root1.add_widget(self.widgets_layout)
         self.root1.add_widget(Button(text='properties screen', size_hint_y=None, height='30dp', on_press=self.to_scr2_btn_click))
-        scr1 = Screen(name='scr1')
+        scr1 = Screen(name='mainscreen')
         scr1.add_widget(self.root1)
-        scr2 = Screen(name='scr2')
+        scr2 = Screen(name='properties')
         scr2.add_widget(self.root2)
         self.sm.add_widget(scr1)
         self.sm.add_widget(scr2)
@@ -91,11 +93,11 @@ class MainApp(App):
 
     def to_scr1_btn_click(self, instance):
         self.sm.transition.direction = 'right'
-        self.sm.current = 'scr1'
+        self.sm.current = 'mainscreen'
 
     def to_scr2_btn_click(self, instance):
         self.sm.transition.direction = 'left'
-        self.sm.current = 'scr2'
+        self.sm.current = 'properties'
 
     def on_btn_click(self, instance):
         freq = int(instance.text) + 1
