@@ -1,41 +1,81 @@
-import random
-from kivywidgets import Widgets
 from kivy.app import App
+from kivy.metrics import dp
+from kivy.uix.behaviors import TouchRippleBehavior
 from kivy.uix.button import Button
+from kivy.lang import Builder
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.scatter import Scatter
+
+
+KV = """
+<RectangleFlatButton>:
+    ripple_color: 0, 0, 0, .2
+    background_color: 0, 0, 0, 0
+    color: root.primary_color
+
+    canvas.before:
+        Color:
+            rgba: root.primary_color
+        Line:
+            width: 1
+            rectangle: (self.x, self.y, self.width, self.height)
+
+Screen:
+    canvas:
+        Color:
+            rgba: 0.9764705882352941, 0.9764705882352941, 0.9764705882352941, 1
+        Rectangle:
+            pos: self.pos
+            size: self.size
+"""
+
+
+class RectangleFlatButton(TouchRippleBehavior, Button):
+    primary_color = [
+        0.12941176470588237,
+        0.5882352941176471,
+        0.9529411764705882,
+        1
+    ]
+
+    def on_touch_down(self, touch):
+        collide_point = self.collide_point(touch.x, touch.y)
+        if collide_point:
+            touch.grab(self)
+            self.ripple_show(touch)
+            return True
+        return False
+
+    def on_touch_up(self, touch):
+        if touch.grab_current is self:
+            touch.ungrab(self)
+            self.ripple_fade()
+            return True
+        return False
 
 def get_hor_boxlayout(orientation='horizontal', padding=10, spacing=10):
     return BoxLayout(orientation=orientation, padding=padding, spacing=spacing)
 
-class TutorialApp(App):
+class MainApp(App):
     def build(self):
-        self.root = BoxLayout(orientation='vertical', padding=0)
-        self.root.add_widget(Button(text='rebuild of layout', size_hint_y=None, height='30dp', on_press=self.rebuild_btn_click))
-        self.widgets_layout = BoxLayout(orientation='vertical')
-        self.rebuild_btn_click(self)
-        self.root.add_widget(self.widgets_layout)
-        return self.root
+        screen = Builder.load_string(KV)
+        hor = get_hor_boxlayout()
+        hor.add_widget(RectangleFlatButton(
+                text="Hello, World",
+                pos_hint={"center_x": 0.5, "center_y": 0.5},
+                size_hint=(None, None),
+                size=(dp(110), dp(35)),
+                ripple_color=(0.8, 0.8, 0.8, 0.5),
+            ))
+        hor.add_widget(RectangleFlatButton(
+            text="Hello, World",
+            pos_hint={"center_x": 0.5, "center_y": 0.5},
+            size_hint=(None, None),
+            size=(dp(110), dp(35)),
+            ripple_color=(0.8, 0.8, 0.8, 0.5),
+        ))
+        screen.add_widget(hor)
 
-    def rebuild_btn_click(self, instance):
-        self.widgets_layout.clear_widgets()
-        for i in range(5):
-            hor = get_hor_boxlayout('horizontal', 0, 0)
-            for j in range(5):
-                s = Scatter(do_rotation=False, do_scale=False, auto_bring_to_front=False)
-                hor.add_widget(s)
-                s.add_widget(Widgets.get_random_widget())
-            self.widgets_layout.add_widget(hor)
-        # for j in range(5):
-        #     b = BoxLayout(orientation='horizontal', padding=0)
-        #     for i in range(5):
-        #         f = FloatLayout()
-        #         s = Scatter(do_rotation=False, do_scale=False, auto_bring_to_front=False)
-        #         f.add_widget(s)
-        #         w = Widgets.get_random_widget()
-        #         s.add_widget(w)
-        #         b.add_widget(f)
-        #     b0.add_widget(b)
+        return screen
 
-if __name__ == "__main__":
-    TutorialApp().run()
+
+MainApp().run()
