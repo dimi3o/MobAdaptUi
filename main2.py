@@ -13,11 +13,14 @@ from kivy.graphics import Color, Rectangle
 WhiteBackColor = True
 __version__ = '0.0.2.1'
 
+
 def get_textcolor():
     return [0, 0, 0, 1] if WhiteBackColor else [1, 1, 1, 1]
 
+
 def get_hor_boxlayout(orientation='horizontal', padding=10, spacing=10):
     return BoxLayout(orientation=orientation, padding=padding, spacing=spacing)
+
 
 class MainApp(App):
     sm = ScreenManager()
@@ -99,8 +102,8 @@ class MainApp(App):
                 s = Scatter(do_rotation=False, do_scale=False, auto_bring_to_front=False)
                 hor.add_widget(s)
                 w = Widgets.get_random_widget()
-                w.width = f'{550/self.cols_slider.value}dp'
-                w.height = f'{300/self.rows_slider.value}dp'
+                w.width = f'{550//self.cols_slider.value}dp'
+                w.height = f'{300//self.rows_slider.value}dp'
                 s.add_widget(w)
             self.sandbox_widgets.add_widget(hor)
 
