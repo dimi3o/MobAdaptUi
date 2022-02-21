@@ -49,7 +49,7 @@ class MainApp(App):
         self.add_screen('properties', self.root2)
 
         # SANDBOX LAYOUT
-        self.root3 = BoxLayout(orientation='vertical', padding=10)
+        self.root3 = BoxLayout(orientation='vertical', padding=10, spacing=10)
         self.root3.add_widget(Button(text='rebuild', size_hint_y=None, height='30dp', on_press=self.sandbox_rebuild_btn_click))
         self.sandbox_widgets = BoxLayout(orientation='vertical', padding=0, spacing=0)
         self.sandbox_rebuild_btn_click(self)
@@ -58,7 +58,7 @@ class MainApp(App):
         self.add_screen('sandbox', self.root3)
 
         # MAINSCREEN LAYOUT
-        self.root1 = BoxLayout(orientation='vertical', padding=10)
+        self.root1 = BoxLayout(orientation='vertical', padding=10, spacing=10)
         self.root1.add_widget(Button(text='rebuild', size_hint_y=None, height='30dp', on_press=self.mainscreen_rebuild_btn_click))
         self.mainscreen_widgets = BoxLayout(orientation='vertical', padding=10, spacing=10)
         self.mainscreen_rebuild_btn_click(self)
