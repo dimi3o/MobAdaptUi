@@ -12,7 +12,7 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.graphics import Color, Rectangle
 
 WhiteBackColor = True
-__version__ = '0.0.2.1'
+__version__ = '0.0.2.2'
 
 
 def get_textcolor():
