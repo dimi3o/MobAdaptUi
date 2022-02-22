@@ -90,8 +90,8 @@ class FlyLabel(TouchRippleBehavior, Label):
 
     def __init__(self, **kwargs):
         super(FlyLabel, self).__init__(**kwargs)
-        self.velocity[0] *= random.choice([-1, 1])
-        self.velocity[1] *= random.choice([-1, 1])
+        self.velocity[0] *= random.choice([-2, 2])
+        self.velocity[1] *= random.choice([-2, 2])
         self.text = 'flylabel'
         self.color = random.choice(allcolors)
 
@@ -119,8 +119,8 @@ class FlyScatter(TouchRippleBehavior, Scatter):
 
     def __init__(self, **kwargs):
         super(FlyScatter, self).__init__(**kwargs)
-        self.velocity[0] *= random.choice([-1, 1])
-        self.velocity[1] *= random.choice([-1, 1])
+        self.velocity[0] *= random.choice([-2, 2])
+        self.velocity[1] *= random.choice([-2, 2])
         self.text = 'flylabel'
         self.color = random.choice(allcolors)
 
