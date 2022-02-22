@@ -11,6 +11,7 @@ from kivy.uix.switch import Switch
 from kivy.uix.spinner import Spinner
 from kivy.uix.progressbar import ProgressBar
 from kivy.uix.behaviors import TouchRippleBehavior
+from kivy.uix.scatter import Scatter
 from kivy.properties import ListProperty, BooleanProperty
 from kivy.core.window import Window
 from kivy.clock import Clock
@@ -98,9 +99,38 @@ class FlyLabel(TouchRippleBehavior, Label):
         parent = self.parent
         parent.x += self.velocity[0]
         parent.y += self.velocity[1]
-        if parent.x < 0 or (parent.x + parent.width//2) > Window.width:
+        if parent.x < 0 or (parent.x + 2*parent.width//2) > Window.width:
             self.velocity[0] *= -1
-        if parent.y < 0 or (parent.y + parent.height//2) > Window.height:
+        if parent.y < 0 or (parent.y + 2*parent.height//2) > Window.height:
+            self.velocity[1] *= -1
+        parent.pos = [parent.x, parent.y]
+
+    def on_touch_down(self, touch):
+        if self.emulation:
+            self.emulation = False
+            Clock.unschedule(self.update_pos)
+            return
+        self.emulation = True
+        Clock.schedule_interval(self.update_pos, 1. / 60.)
+
+class FlyScatter(TouchRippleBehavior, Scatter):
+    velocity = ListProperty([2, 1])
+    emulation = BooleanProperty(False)
+
+    def __init__(self, **kwargs):
+        super(FlyScatter, self).__init__(**kwargs)
+        self.velocity[0] *= random.choice([-1, 1])
+        self.velocity[1] *= random.choice([-1, 1])
+        self.text = 'flylabel'
+        self.color = random.choice(allcolors)
+
+    def update_pos(self, *args):
+        parent = self
+        parent.x += self.velocity[0]
+        parent.y += self.velocity[1]
+        if parent.x < 0 or (parent.x + 2*parent.width//3) > Window.width:
+            self.velocity[0] *= -1
+        if parent.y < 0 or (parent.y + 2*parent.height//3) > Window.height:
             self.velocity[1] *= -1
         parent.pos = [parent.x, parent.y]
 

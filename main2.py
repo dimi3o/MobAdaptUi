@@ -1,10 +1,11 @@
 import random
-from kivywidgets import Widgets
+from kivywidgets import Widgets, FlyScatter
 from kivy.app import App
 from kivy.properties import NumericProperty
 from kivy.uix.label import Label
 from kivy.uix.button import Button
 from kivy.uix.slider import Slider
+from kivy.uix.checkbox import CheckBox
 from kivy.uix.scatter import Scatter
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.uix.boxlayout import BoxLayout
@@ -30,40 +31,51 @@ class MainApp(App):
     def __init__(self, **kwargs):
         super(MainApp, self).__init__(**kwargs)
         self.title = 'Adaptive Mobile UI'
+        self.rows_slider = Slider(min=1, max=10, value=5, step=1)
+        self.cols_slider = Slider(min=1, max=10, value=5, step=1)
+        self.flyscatter = CheckBox(active=False, size_hint_x=None, on_press=self.on_flyscatter_checkbox_click)
 
     def build(self):
         # PROPERTIES LAYOUT
         self.root2 = BoxLayout(orientation='vertical', padding=10)
         self.root2.add_widget(Label(text='Image, TextInput, Label,\nButton, CheckBox, Slider,\nSwitch, Spinner, ProgressBar', color=get_textcolor()))
-        self.rows_slider = Slider(min=1, max=10, value=5, step=1)
-        self.cols_slider = Slider(min=1, max=10, value=5, step=1)
         hor = get_hor_boxlayout()
-        hor.add_widget(Label(text='ROWS:', color=get_textcolor(), size_hint_x=None, width='50dp'))
+        hor.add_widget(Label(text='ROWS:', color=get_textcolor(), size_hint_x=None))
         hor.add_widget(self.rows_slider)
         self.root2.add_widget(hor)
         hor = get_hor_boxlayout()
-        hor.add_widget(Label(text='COLUMNS:', color=get_textcolor(), size_hint_x=None, width='50dp'))
+        hor.add_widget(Label(text='COLUMNS:', color=get_textcolor(), size_hint_x=None))
         hor.add_widget(self.cols_slider)
         self.root2.add_widget(hor)
-        self.root2.add_widget(Button(text='main screen', size_hint_y=None, height='30dp', on_press=self.to_scr1_btn_click))
+        hor = get_hor_boxlayout()
+        hor.add_widget(Label(text='FLY SCATTER:', color=get_textcolor(), size_hint_x=None))
+        hor.add_widget(self.flyscatter)
+        self.root2.add_widget(hor)
+        hor = BoxLayout(orientation='horizontal', padding=0, spacing=0, size_hint_y=None, height='10dp')
+        hor.add_widget(Button(text='mainscreen', size_hint_y=None, height='30dp', on_press=self.to_scr1_btn_click))
+        hor.add_widget(Button(text='sandbox', size_hint_y=None, height='30dp', on_press=self.to_scr3_btn_click))
+        self.root2.add_widget(hor)
         self.add_screen('properties', self.root2)
 
         # SANDBOX LAYOUT
-        self.root3 = BoxLayout(orientation='vertical', padding=10, spacing=10)
+        self.root3 = BoxLayout(orientation='vertical', padding=10, spacing=0)
         self.root3.add_widget(Button(text='rebuild', size_hint_y=None, height='30dp', on_press=self.sandbox_rebuild_btn_click))
         self.sandbox_widgets = BoxLayout(orientation='vertical', padding=0, spacing=0)
         self.sandbox_rebuild_btn_click(self)
         self.root3.add_widget(self.sandbox_widgets)
-        self.root3.add_widget(Button(text='mainscreen', size_hint_y=None, height='30dp', on_press=self.to_scr1_btn_click_left))
+        hor = BoxLayout(orientation='horizontal', padding=0, spacing=0, size_hint_y=None, height='30dp')
+        hor.add_widget(Button(text='mainscreen', size_hint_y=None, height='30dp', on_press=self.to_scr1_btn_click_left))
+        hor.add_widget(Button(text='properties', size_hint_y=None, height='30dp', on_press=self.to_scr2_btn_click))
+        self.root3.add_widget(hor)
         self.add_screen('sandbox', self.root3)
 
         # MAINSCREEN LAYOUT
-        self.root1 = BoxLayout(orientation='vertical', padding=10, spacing=10)
+        self.root1 = BoxLayout(orientation='vertical', padding=10, spacing=0)
         self.root1.add_widget(Button(text='rebuild', size_hint_y=None, height='30dp', on_press=self.mainscreen_rebuild_btn_click))
-        self.mainscreen_widgets = BoxLayout(orientation='vertical', padding=10, spacing=10)
+        self.mainscreen_widgets = BoxLayout(orientation='vertical', padding=0, spacing=0)
         self.mainscreen_rebuild_btn_click(self)
         self.root1.add_widget(self.mainscreen_widgets)
-        hor = BoxLayout(orientation='horizontal', padding=0, spacing=0, size_hint_y=None, height='10dp')
+        hor = BoxLayout(orientation='horizontal', padding=0, spacing=0, size_hint_y=None, height='30dp')
         hor.add_widget(Button(text='sandbox', size_hint_y=None, height='30dp', on_press=self.to_scr3_btn_click))
         hor.add_widget(Button(text='properties', size_hint_y=None, height='30dp', on_press=self.to_scr2_btn_click))
         self.root1.add_widget(hor)
@@ -76,6 +88,9 @@ class MainApp(App):
                 Color(1, 1, 1)
                 self.rect = Rectangle(size=self.sm.size, pos=self.sm.pos)
         return self.sm
+
+    def on_flyscatter_checkbox_click(self, instance):
+        self.sandbox_rebuild_btn_click(self)
 
     def add_screen(self, name, widget):
         scr = Screen(name=name)
@@ -97,9 +112,12 @@ class MainApp(App):
     def sandbox_rebuild_btn_click(self, instance):
         self.sandbox_widgets.clear_widgets()
         for i in range(self.rows_slider.value):
-            hor = get_hor_boxlayout('horizontal', 0, 0)
+            hor = get_hor_boxlayout('horizontal')
             for j in range(self.cols_slider.value):
-                s = Scatter(do_rotation=False, do_scale=False, auto_bring_to_front=False)
+                if self.flyscatter.active:
+                    s = FlyScatter(do_rotation=False, do_scale=False, auto_bring_to_front=False)
+                else:
+                    s = Scatter(do_rotation=False, do_scale=False, auto_bring_to_front=False)
                 hor.add_widget(s)
                 w = Widgets.get_random_widget()
                 w.width = f'{550//self.cols_slider.value}dp'
