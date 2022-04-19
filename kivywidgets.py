@@ -11,29 +11,30 @@ from kivy.uix.switch import Switch
 from kivy.uix.spinner import Spinner
 from kivy.uix.progressbar import ProgressBar
 from kivy.uix.behaviors import TouchRippleBehavior
-from kivy.properties import ListProperty, StringProperty
+from kivy.uix.scatter import Scatter
+from kivy.properties import ListProperty, BooleanProperty
 from kivy.core.window import Window
 from kivy.clock import Clock
 from colors import allcolors
 
-widgets = ['Image','TextInput','Label','Button','CheckBox','Slider','Switch','Spinner','ProgressBar','TransLabel','FlatButton']
+widgets = ['Image','TextInput','Label','Button','CheckBox','Slider','Switch','Spinner','ProgressBar','FlyLabel','FlatButton']
 
 
 class Widgets:
     @staticmethod
     def get_random_widget():
         ret = random.choice(widgets)
-        if ret=='Image': return Image(source='data/icons/bug1.png')
-        elif ret=='TextInput': return TextInput(text='textinput') #(font_size = 20, size_hint_y = None, height = 50)
-        elif ret=='Label': return Label(text='label', color=random.choice(allcolors))
-        elif ret=='Button': return Button(text='button', background_color=random.choice(allcolors)) #on_press=self.on_btn_click))
-        elif ret=='CheckBox': return CheckBox(active=True)
-        elif ret=='Slider': return Slider(min=1, max=10, value=1, step=1)
-        elif ret=='Switch': return Switch(active=True)
-        elif ret=='Spinner': return Spinner(text="Spinner", values=("Python", "Java", "C++", "C", "C#", "PHP"), background_color=(0.784,0.443,0.216,1))
-        elif ret=='ProgressBar': return ProgressBar(max=1000, value=750)
-        elif ret=='TransLabel': return TransLabel()
-        elif ret=='FlatButton': return FlatButton().build()
+        if ret == 'Image': return Image(source='data/icons/bug1.png')
+        elif ret == 'TextInput': return TextInput(text='textinput')
+        elif ret == 'Label': return Label(text='label', color=random.choice(allcolors))
+        elif ret == 'Button': return Button(text='button', background_color=random.choice(allcolors))
+        elif ret == 'CheckBox': return CheckBox(active=True)
+        elif ret == 'Slider': return Slider(min=1, max=10, value=1, step=1)
+        elif ret == 'Switch': return Switch(active=True)
+        elif ret == 'Spinner': return Spinner(text="Spinner", values=("Python", "Java", "C++", "C", "C#", "PHP"), background_color=(0.784,0.443,0.216,1))
+        elif ret == 'ProgressBar': return ProgressBar(max=1000, value=750)
+        elif ret == 'FlyLabel': return FlyLabel()
+        elif ret == 'FlatButton': return FlatButton().build()
         return
 
 
@@ -83,26 +84,60 @@ class FlatButton(TouchRippleBehavior, Button):
         return False
 
 
-class TransLabel(Label):
+class FlyLabel(TouchRippleBehavior, Label):
     velocity = ListProperty([2, 1])
+    emulation = BooleanProperty(False)
 
     def __init__(self, **kwargs):
-        super(TransLabel, self).__init__(**kwargs)
-        Clock.schedule_interval(self.updatePOS, 1. / 60.)
-        self.velocity[0] *= random.choice([-1, 1])
-        self.velocity[1] *= random.choice([-1, 1])
-
-        self.text = 'translabel'
+        super(FlyLabel, self).__init__(**kwargs)
+        self.velocity[0] *= random.choice([-2, 2])
+        self.velocity[1] *= random.choice([-2, 2])
+        self.text = 'flylabel'
         self.color = random.choice(allcolors)
 
-    def updatePOS(self, *args):
-        self.x += self.velocity[0]
-        self.y += self.velocity[1]
-
-        if self.x < 0 or (self.x + self.width) > Window.width:
+    def update_pos(self, *args):
+        parent = self.parent
+        parent.x += self.velocity[0]
+        parent.y += self.velocity[1]
+        if parent.x < 0 or (parent.x + 2*parent.width//2) > Window.width:
             self.velocity[0] *= -1
-
-        if self.y < 0 or (self.y + self.height) > Window.height:
+        if parent.y < 0 or (parent.y + 2*parent.height//2) > Window.height:
             self.velocity[1] *= -1
+        parent.pos = [parent.x, parent.y]
 
-        self.pos = [self.x, self.y]
+    def on_touch_down(self, touch):
+        if self.emulation:
+            self.emulation = False
+            Clock.unschedule(self.update_pos)
+            return
+        self.emulation = True
+        Clock.schedule_interval(self.update_pos, 1. / 60.)
+
+class FlyScatter(TouchRippleBehavior, Scatter):
+    velocity = ListProperty([2, 1])
+    emulation = BooleanProperty(False)
+
+    def __init__(self, **kwargs):
+        super(FlyScatter, self).__init__(**kwargs)
+        self.velocity[0] *= random.choice([-2, 2])
+        self.velocity[1] *= random.choice([-2, 2])
+        self.text = 'flylabel'
+        self.color = random.choice(allcolors)
+
+    def update_pos(self, *args):
+        parent = self
+        parent.x += self.velocity[0]
+        parent.y += self.velocity[1]
+        if parent.x < 0 or (parent.x + 2*parent.width//3) > Window.width:
+            self.velocity[0] *= -1
+        if parent.y < 0 or (parent.y + 2*parent.height//3) > Window.height:
+            self.velocity[1] *= -1
+        parent.pos = [parent.x, parent.y]
+
+    def on_touch_down(self, touch):
+        if self.emulation:
+            self.emulation = False
+            Clock.unschedule(self.update_pos)
+            return
+        self.emulation = True
+        Clock.schedule_interval(self.update_pos, 1. / 60.)
