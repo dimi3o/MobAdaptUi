@@ -41,6 +41,7 @@ col_2.addLayout(row_4)
 layout_notes.addLayout(col_1, stretch=2)
 layout_notes.addLayout(col_2, stretch=1)
 notes_win.setLayout(layout_notes)
+notes_path='notes_data.json'
 '''Функционал приложения'''
 
 
