@@ -61,8 +61,7 @@ def save_note():
     if list_notes.selectedItems():
         key = list_notes.selectedItems()[0].text()
         notes[key]["текст"] = field_text.toPlainText()
-        with open("notes_data.json", "w") as file:
-            json.dump(notes, file, sort_keys=True, ensure_ascii=False)
+        save_notes(notes)
         print(notes)
     else:
         print("Заметка для сохранения не выбрана!")
@@ -74,8 +73,7 @@ def del_note():
         list_notes.clear()
         field_text.clear()
         list_notes.addItems(notes)
-        with open("notes_data.json", "w") as file:
-            json.dump(notes, file, sort_keys=True, ensure_ascii=False)
+        save_notes(notes)
         print(notes)
     else:
         print("Заметка для удаления не выбрана!")
@@ -99,9 +97,16 @@ def unite_notes():
         notes[note_name] = {"текст": notes_txt}
         list_notes.addItem(note_name)
         print(notes)
-        with open("notes_data.json", "w") as file:
-            json.dump(notes, file, sort_keys=True, ensure_ascii=False)
+        save_notes(notes)
     notes_to_unite = []
+
+def save_notes(notes):
+    with open(notes_path, "w", encoding='utf8') as file:
+        json.dump(notes, file, sort_keys=True, ensure_ascii=False)
+
+def load_notes():
+    with open(notes_path, "r",encoding='utf8') as file:
+        return json.load(file)
 
 list_notes.itemClicked.connect(show_note)
 button_note_create.clicked.connect(add_note)
@@ -112,6 +117,7 @@ button_note_del.clicked.connect(del_note)
 list_notes.itemClicked.connect(show_note)
 
 notes_to_unite = []
+notes=load_notes()
 notes_win.show()
 
 with open("notes_data.json", "r") as file:
