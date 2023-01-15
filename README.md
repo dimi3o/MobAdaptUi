@@ -19,6 +19,8 @@ Presplash-promo
 
 ## Android
 You can build for Android using buildozer on Linux.
+## Aurora OS
+An application is being developed on the [Aurora OS ](https://community.omprussia.ru/documentation/platform.html) platform. 
 ## Install buildozer
 
 Follow the instructions for your platform [here](https://pypi.org/project/buildozer/) 
