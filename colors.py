@@ -8,8 +8,8 @@ yellowclr = [.9, 1, .01, 1]
 favcolors = [redclr, greenclr, blueclr, lgreenclr, purpleclr,yellowclr]
 allcolors = [redclr, grayclr, greenclr, blueclr, lgreenclr, purpleclr,yellowclr]
 
-def get_textcolor():
-    return [0, 0, 0, 1] if WhiteBackColor else [1, 1, 1, 1]
+def get_textcolor(while_flag=False):
+    return [0, 0, 0, 1] if while_flag else [1, 1, 1, 1]
 
 # somecolors = []
 # x = float(.01); y = float(.01); z = float(.01)
