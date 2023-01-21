@@ -20,10 +20,10 @@ from colors import allcolors
 widgets = ['Image','TextInput','Label','Button','CheckBox','Slider','Switch','Spinner','ProgressBar','FlyLabel','FlatButton']
 
 
-class Widgets:
+class Widgets(object):
     @staticmethod
-    def get_random_widget():
-        ret = random.choice(widgets)
+    def get_random_widget(name=''):
+        ret = random.choice(widgets) if (name is '') else name
         if ret == 'Image': return Image(source='data/icons/bug1.png')
         elif ret == 'TextInput': return TextInput(text='textinput')
         elif ret == 'Label': return Label(text='label', color=random.choice(allcolors))
@@ -35,8 +35,11 @@ class Widgets:
         elif ret == 'ProgressBar': return ProgressBar(max=1000, value=750)
         elif ret == 'FlyLabel': return FlyLabel()
         elif ret == 'FlatButton': return FlatButton().build()
-        return
+        return ''
 
+    @staticmethod
+    def get_widget(name):
+        return Widgets.get_random_widget(name)
 
 KV = """
 <FlatButton>:
