@@ -1,4 +1,5 @@
 from enum import Enum
+from kivy.graphics import Color
 
 redclr = [1,0,0,1]
 grayclr = [.10, .35, .41, .85]
@@ -10,6 +11,7 @@ purpleclr = [1,0,1,1]
 yellowclr = [.9, 1, .01, 1]
 favcolors = [redclr, greenclr, blueclr, lgreenclr, purpleclr,yellowclr]
 allcolors = [redclr, grayclr, greenclr, blueclr, lgreenclr, purpleclr,yellowclr]
+LightGrayColor = Color(0.827, 0.827, 0.827, 1.)
 
 class MyColors(Enum):
     Red = [1,0,0,1]

@@ -138,9 +138,47 @@ class FlyScatter(TouchRippleBehavior, Scatter):
         parent.pos = [parent.x, parent.y]
 
     def on_touch_down(self, touch):
-        if self.emulation:
-            self.emulation = False
+        if not(self.emulation):
+            Clock.schedule_interval(self.update_pos, 1. / 60.)
+            self.emulation = True
+        else:
             Clock.unschedule(self.update_pos)
-            return
-        self.emulation = True
-        Clock.schedule_interval(self.update_pos, 1. / 60.)
+            self.emulation = False
+
+class FlyScatterV3(Scatter):#TouchRippleBehavior, Scatter):
+    velocity = ListProperty([2, 1])
+    emulation = BooleanProperty(False)
+
+    def __init__(self, **kwargs):
+        super(FlyScatterV3, self).__init__(**kwargs)
+        self.velocity[0] *= random.choice([-2, 2])
+        self.velocity[1] *= random.choice([-2, 2])
+        self.text = 'flyscatter'
+        self.color = random.choice(allcolors)
+
+    def update_pos(self, *args):
+        parent = self
+        parent.x += self.velocity[0]
+        parent.y += self.velocity[1]
+        if parent.x < 0 or (parent.x + 2*parent.width//3) > Window.width:
+            self.velocity[0] *= -1
+        if parent.y < 0 or (parent.y + 2*parent.height//3) > Window.height:
+            self.velocity[1] *= -1
+        parent.pos = [parent.x, parent.y]
+
+    def change_emulation(self):
+        self.emulation = self.set_emulation(True) if not(self.emulation) else self.set_emulation(False)
+
+    def start_emulation(self):
+        self.emulation = self.set_emulation(True)
+
+    def stop_emulation(self):
+        self.emulation = self.set_emulation(False)
+
+    def set_emulation(self, mode=False):
+        if mode:
+            Clock.schedule_interval(self.update_pos, 1. / 60.)
+            return True
+        else:
+            Clock.unschedule(self.update_pos)
+            return False
