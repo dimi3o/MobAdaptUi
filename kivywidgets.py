@@ -148,6 +148,7 @@ class FlyScatter(TouchRippleBehavior, Scatter):
 class FlyScatterV3(Scatter):#TouchRippleBehavior, Scatter):
     velocity = ListProperty([2, 1])
     emulation = BooleanProperty(False)
+    deltaposxy = 10
 
     def __init__(self, **kwargs):
         super(FlyScatterV3, self).__init__(**kwargs)
@@ -158,13 +159,16 @@ class FlyScatterV3(Scatter):#TouchRippleBehavior, Scatter):
 
     def update_pos(self, *args):
         parent = self
-        parent.x += self.velocity[0]
-        parent.y += self.velocity[1]
+        parent.x += self.deltaposxy*self.velocity[0]
+        parent.y += self.deltaposxy*self.velocity[1]
         if parent.x < 0 or (parent.x + 2*parent.width//3) > Window.width:
             self.velocity[0] *= -1
         if parent.y < 0 or (parent.y + 2*parent.height//3) > Window.height:
             self.velocity[1] *= -1
         parent.pos = [parent.x, parent.y]
+        w = parent.width + 2*self.velocity[0]
+        h = parent.height + 2*self.velocity[1]
+        # parent.size = [w, h]
 
     def change_emulation(self):
         self.emulation = self.set_emulation(True) if not(self.emulation) else self.set_emulation(False)
@@ -177,7 +181,7 @@ class FlyScatterV3(Scatter):#TouchRippleBehavior, Scatter):
 
     def set_emulation(self, mode=False):
         if mode:
-            Clock.schedule_interval(self.update_pos, 1. / 60.)
+            Clock.schedule_interval(self.update_pos, 1. / 10.)
             return True
         else:
             Clock.unschedule(self.update_pos)
