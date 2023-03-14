@@ -28,18 +28,17 @@ class MainApp(App):
         self.title = 'MARL Mobile User Interface v.'+__version__
         self.text_color = MyColors.get_textcolor(WhiteBackColor)
         self.modes = ("Fly adapt", "MARL adapt", "GAN adapt")
-        self.width_height = ("1", "2", "3", "4", "5", "6")
+        self.cols_rows = ("1х1", "2х2", "3х3", "4х4", "5х5", "6х6")
 
     def build(self):
         # Root Layout
         self.root = BoxLayout(orientation='vertical', padding=10)  # ,size_hint_y=None)
 
         #HEAD PANEL
-        self.widthspinner = Spinner(text="2", values=self.width_height, background_color=(0.527,0.154,0.861,1))
-        self.heightspinner = Spinner(text="2", values=self.width_height, background_color=(0.527,0.154,0.861,1))
-        lbl = Label(text='Width/Height":', color=(0, 0, 1, 1))
+        self.colrowspinner = Spinner(text=self.cols_rows[1], values=self.cols_rows, background_color=(0.527,0.154,0.861,1))
+        lbl = Label(text='cols/rows":', color=(0, 0, 1, 1))
         btn = Button(text='rebuild', size_hint_y=None, height='30dp', on_press=self.mainscreen_rebuild_btn_click)
-        self.headpanel = self.init_hor_boxlayout([lbl, self.widthspinner, self.heightspinner, btn])
+        self.headpanel = self.init_hor_boxlayout([lbl, self.colrowspinner, btn])
         self.root.add_widget(self.headpanel)
         self.headpanel.bind(size=self._update_rect_headpanel, pos=self._update_rect_headpanel)
 
@@ -62,8 +61,6 @@ class MainApp(App):
         with self.footpanel.canvas.before:
             Color(0.827, 0.827, 0.827, 1.)
             self.rect_footpanel = Rectangle()
-        # self.panel.canvas.before.add(Color(0.827, 0.827, 0.827, 1.))
-        # self.panel.canvas.before.add(Rectangle(size=(1000, 45), pos=self.panel.pos))
 
         if WhiteBackColor:
             self.root.bind(size=self._update_rect, pos=self._update_rect)
@@ -82,16 +79,15 @@ class MainApp(App):
     def mainscreen_rebuild_btn_click(self, instance):
         self.mainscreen_widgets.clear_widgets()
         self.FlyScatters.clear()
-        width = int(self.widthspinner.text)
-        height = int(self.heightspinner.text)
-        for i in range(height):#random.randint(5, 10)):
+        colsrows = int(self.colrowspinner.text[0])
+        for i in range(colsrows):#random.randint(5, 10)):
             hor = BoxLayout(orientation='horizontal', padding=10, spacing=10, )
-            for j in range(width):#random.randint(1, 5)):
+            for j in range(colsrows):#random.randint(1, 5)):
                 s = FlyScatterV3(do_rotation=True, do_scale=True, auto_bring_to_front=False)
                 hor.add_widget(s)
                 w = Widgets.get_random_widget()
-                w.width = f'{550 // width}dp'
-                w.height = f'{300 // height}dp'
+                w.width = f'{550 // colsrows}dp'
+                w.height = f'{300 // colsrows}dp'
                 s.add_widget(w)
                 self.FlyScatters.append(s)
                 #hor.add_widget(Widgets.get_random_widget())
