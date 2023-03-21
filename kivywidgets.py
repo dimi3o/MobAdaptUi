@@ -61,7 +61,7 @@ class FlyScatterV3(Scatter):#TouchRippleBehavior, Scatter):
 
     def update_pos(self, *args):
         parent = self
-        if self.mode == 'Fly adapt':
+        if self.mode == 'Fly adapt' or self.mode == 'Fly+Size adapt':
             parent.x += self.deltaposxy*self.velocity[0]
             parent.y += self.deltaposxy*self.velocity[1]
             if parent.x < 0 or (parent.x + 2*parent.width//3) > Window.width:
@@ -69,7 +69,7 @@ class FlyScatterV3(Scatter):#TouchRippleBehavior, Scatter):
             if parent.y < 0 or (parent.y + 2*parent.height//3) > Window.height:
                 self.velocity[1] *= -1
             # parent.pos = [parent.x, parent.y]
-        elif self.mode == 'Size adapt':
+        if self.mode == 'Size adapt' or self.mode == 'Fly+Size adapt':
             w = parent.children[0].width
             h = parent.children[0].height
             if self.raw_width == 0: self.raw_width = w
@@ -80,7 +80,6 @@ class FlyScatterV3(Scatter):#TouchRippleBehavior, Scatter):
             elif h > self.raw_height: self.reduceH = -1
             parent.children[0].width = w + self.reduceW
             parent.children[0].height = h + self.reduceH
-            # parent.size = [w, h]
 
     def change_emulation(self):
         self.emulation = self.set_emulation(True) if not(self.emulation) else self.set_emulation(False)

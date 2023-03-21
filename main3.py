@@ -27,7 +27,7 @@ class MainApp(App):
         super(MainApp, self).__init__(**kwargs)
         self.title = 'MARL Mobile User Interface v.'+__version__
         self.text_color = MyColors.get_textcolor(WhiteBackColor)
-        self.modes = ('Fly adapt', 'Size adapt', 'MARL adapt', 'GAN adapt')
+        self.modes = ('Fly adapt', 'Size adapt', 'Fly+Size adapt','MARL adapt', 'GAN adapt')
         self.cols_rows = ("1х1", "2х2", "3х3", "4х4", "5х5", "6х6")
 
     def build(self):
