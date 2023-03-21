@@ -27,7 +27,7 @@ class MainApp(App):
         super(MainApp, self).__init__(**kwargs)
         self.title = 'MARL Mobile User Interface v.'+__version__
         self.text_color = MyColors.get_textcolor(WhiteBackColor)
-        self.modes = ("Fly adapt", "MARL adapt", "GAN adapt")
+        self.modes = ('Fly adapt', 'Size adapt', 'MARL adapt', 'GAN adapt')
         self.cols_rows = ("1х1", "2х2", "3х3", "4х4", "5х5", "6х6")
 
     def build(self):
@@ -55,7 +55,8 @@ class MainApp(App):
         self.modespinner = Spinner(text="Fly adapt", values=self.modes, background_color=(0.127,0.854,0.561,1))
         btn = Button(text='adapt ui', size_hint_y=None, height='30dp', on_press=self.adapt_ui) #on_press=lambda null: self.show_popup('MARLMUI starting... '+self.modespinner.text, 'Info'))
         lbl = Label(text='Select mode and press "adapt ui":', color=(0, 0, 1, 1)) #, size_hint_x=None, width='150dp')
-        self.footpanel = self.init_hor_boxlayout([lbl,self.modespinner, btn])
+        self.lblOnOff = Label(text='OFF', size_hint_x=None, width='30dp', color=(1, 0, 0, 1))
+        self.footpanel = self.init_hor_boxlayout([lbl,self.modespinner, btn, self.lblOnOff])
         self.root.add_widget(self.footpanel)
         self.footpanel.bind(size=self._update_rect_footpanel, pos=self._update_rect_footpanel)
         with self.footpanel.canvas.before:
@@ -73,7 +74,8 @@ class MainApp(App):
     def adapt_ui(self, instance):
         for s in self.FlyScatters:
             s.change_emulation()
-            mode = 'starting' if s.emulation else 'stopped'
+            s.mode = self.modespinner.text
+            self.lblOnOff.text = 'ON' if s.emulation else 'OFF'
         # self.show_popup('adapt ui '+mode+'...', self.modespinner.text)
 
     def mainscreen_rebuild_btn_click(self, instance):
@@ -86,8 +88,8 @@ class MainApp(App):
                 s = FlyScatterV3(do_rotation=True, do_scale=True, auto_bring_to_front=False)
                 hor.add_widget(s)
                 w = Widgets.get_random_widget()
-                w.width = f'{550 // colsrows}dp'
-                w.height = f'{300 // colsrows}dp'
+                w.width = f'{(Window.width//colsrows)-70}dp'#f'{550 // colsrows}dp'
+                w.height = f'{(Window.height//colsrows)-70}dp'#f'{300 // colsrows}dp'
                 s.add_widget(w)
                 self.FlyScatters.append(s)
                 #hor.add_widget(Widgets.get_random_widget())

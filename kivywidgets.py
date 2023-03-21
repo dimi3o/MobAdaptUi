@@ -41,6 +41,64 @@ class Widgets(object):
     def get_widget(name):
         return Widgets.get_random_widget(name)
 
+class FlyScatterV3(Scatter):#TouchRippleBehavior, Scatter):
+    velocity = ListProperty([2, 1])
+    emulation = BooleanProperty(False)
+    mode = 'Fly adapt'
+    raw_height = 0
+    raw_width = 0
+    reduceW = -1
+    reduceH = -1
+    deltaposxy = 1
+
+    def __init__(self, **kwargs):
+        super(FlyScatterV3, self).__init__(**kwargs)
+        self.velocity[0] *= random.choice([-2, 2])
+        self.velocity[1] *= random.choice([-2, 2])
+        self.text = 'flyscatter'
+        self.color = random.choice(allcolors)
+
+
+    def update_pos(self, *args):
+        parent = self
+        if self.mode == 'Fly adapt':
+            parent.x += self.deltaposxy*self.velocity[0]
+            parent.y += self.deltaposxy*self.velocity[1]
+            if parent.x < 0 or (parent.x + 2*parent.width//3) > Window.width:
+                self.velocity[0] *= -1
+            if parent.y < 0 or (parent.y + 2*parent.height//3) > Window.height:
+                self.velocity[1] *= -1
+            # parent.pos = [parent.x, parent.y]
+        elif self.mode == 'Size adapt':
+            w = parent.children[0].width
+            h = parent.children[0].height
+            if self.raw_width == 0: self.raw_width = w
+            if self.raw_height == 0: self.raw_height = h
+            if w < self.raw_width // 3: self.reduceW = 1
+            elif w > self.raw_width: self.reduceW = -1
+            if h < self.raw_height // 3: self.reduceH = 1
+            elif h > self.raw_height: self.reduceH = -1
+            parent.children[0].width = w + self.reduceW
+            parent.children[0].height = h + self.reduceH
+            # parent.size = [w, h]
+
+    def change_emulation(self):
+        self.emulation = self.set_emulation(True) if not(self.emulation) else self.set_emulation(False)
+
+    def start_emulation(self):
+        self.emulation = self.set_emulation(True)
+
+    def stop_emulation(self):
+        self.emulation = self.set_emulation(False)
+
+    def set_emulation(self, mode=False):
+        if mode:
+            Clock.schedule_interval(self.update_pos, 1. / 60.)
+            return True
+        else:
+            Clock.unschedule(self.update_pos)
+            return False
+
 KV = """
 <FlatButton>:
     ripple_color: 0, 0, 0, 0
@@ -144,45 +202,3 @@ class FlyScatter(TouchRippleBehavior, Scatter):
         else:
             Clock.unschedule(self.update_pos)
             self.emulation = False
-
-class FlyScatterV3(Scatter):#TouchRippleBehavior, Scatter):
-    velocity = ListProperty([2, 1])
-    emulation = BooleanProperty(False)
-    deltaposxy = 10
-
-    def __init__(self, **kwargs):
-        super(FlyScatterV3, self).__init__(**kwargs)
-        self.velocity[0] *= random.choice([-2, 2])
-        self.velocity[1] *= random.choice([-2, 2])
-        self.text = 'flyscatter'
-        self.color = random.choice(allcolors)
-
-    def update_pos(self, *args):
-        parent = self
-        parent.x += self.deltaposxy*self.velocity[0]
-        parent.y += self.deltaposxy*self.velocity[1]
-        if parent.x < 0 or (parent.x + 2*parent.width//3) > Window.width:
-            self.velocity[0] *= -1
-        if parent.y < 0 or (parent.y + 2*parent.height//3) > Window.height:
-            self.velocity[1] *= -1
-        parent.pos = [parent.x, parent.y]
-        w = parent.width + 2*self.velocity[0]
-        h = parent.height + 2*self.velocity[1]
-        # parent.size = [w, h]
-
-    def change_emulation(self):
-        self.emulation = self.set_emulation(True) if not(self.emulation) else self.set_emulation(False)
-
-    def start_emulation(self):
-        self.emulation = self.set_emulation(True)
-
-    def stop_emulation(self):
-        self.emulation = self.set_emulation(False)
-
-    def set_emulation(self, mode=False):
-        if mode:
-            Clock.schedule_interval(self.update_pos, 1. / 10.)
-            return True
-        else:
-            Clock.unschedule(self.update_pos)
-            return False
