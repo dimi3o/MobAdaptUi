@@ -22,13 +22,15 @@ __version__ = '0.0.3.0'
 
 class MainApp(App):
     FlyScatters = []
+    IdsApps = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36]
 
     def __init__(self, **kwargs):
         super(MainApp, self).__init__(**kwargs)
         self.title = 'MARL Mobile User Interface v.'+__version__
         self.text_color = MyColors.get_textcolor(WhiteBackColor)
         self.modes = ('Fly adapt', 'Size adapt', 'Fly+Size adapt','MARL adapt', 'GAN adapt')
-        self.cols_rows = ("1х1", "2х2", "3х3", "4х4", "5х5", "6х6")
+        self.cols_rows = ('1х1', '2х2', '3х3', '4х4', '5х5', '6х6', '6x6 Apps')
+        random.shuffle(self.IdsApps)
 
     def build(self):
         # Root Layout
@@ -36,7 +38,7 @@ class MainApp(App):
 
         #HEAD PANEL
         self.colrowspinner = Spinner(text=self.cols_rows[1], values=self.cols_rows, background_color=(0.527,0.154,0.861,1))
-        lbl = Label(text='cols/rows":', color=(0, 0, 1, 1))
+        lbl = Label(text='Size":', color=(0, 0, 1, 1))
         btn = Button(text='rebuild', size_hint_y=None, height='30dp', on_press=self.mainscreen_rebuild_btn_click)
         self.headpanel = self.init_hor_boxlayout([lbl, self.colrowspinner, btn])
         self.root.add_widget(self.headpanel)
@@ -79,15 +81,21 @@ class MainApp(App):
         # self.show_popup('adapt ui '+mode+'...', self.modespinner.text)
 
     def mainscreen_rebuild_btn_click(self, instance):
+        apps_mode = False
         self.mainscreen_widgets.clear_widgets()
         self.FlyScatters.clear()
-        colsrows = int(self.colrowspinner.text[0])
+        TextSize = self.colrowspinner.text
+        colsrows = int(TextSize[0])
+        if TextSize == '6x6 Apps':
+            apps_mode = True
+            colsrows = 6
+
         for i in range(colsrows):#random.randint(5, 10)):
             hor = BoxLayout(orientation='horizontal', padding=10, spacing=10, )
             for j in range(colsrows):#random.randint(1, 5)):
                 s = FlyScatterV3(do_rotation=True, do_scale=True, auto_bring_to_front=False)
                 hor.add_widget(s)
-                w = Widgets.get_random_widget()
+                w = Widgets.get_random_widget() if not apps_mode else Widgets.get_app_icon(self.IdsApps[i*colsrows+j])
                 w.width = f'{(Window.width//colsrows)-70}dp'#f'{550 // colsrows}dp'
                 w.height = f'{(Window.height//colsrows)-70}dp'#f'{300 // colsrows}dp'
                 s.add_widget(w)

@@ -38,6 +38,11 @@ class Widgets(object):
         return ''
 
     @staticmethod
+    def get_app_icon(id=''):
+        id = random.randint(1,37) if (id is '') else id
+        return Image(source="data/icons/apps/"+str(id)+".png")
+
+    @staticmethod
     def get_widget(name):
         return Widgets.get_random_widget(name)
 
@@ -74,10 +79,10 @@ class FlyScatterV3(Scatter):#TouchRippleBehavior, Scatter):
             h = parent.children[0].height
             if self.raw_width == 0: self.raw_width = w
             if self.raw_height == 0: self.raw_height = h
-            if w < self.raw_width // 3: self.reduceW = 1
-            elif w > self.raw_width: self.reduceW = -1
-            if h < self.raw_height // 3: self.reduceH = 1
-            elif h > self.raw_height: self.reduceH = -1
+            if w < self.raw_width * 2 // 3: self.reduceW = 1
+            elif w > 2*self.raw_width: self.reduceW = -1
+            if h < self.raw_height * 2 // 3: self.reduceH = 1
+            elif h > 2*self.raw_height: self.reduceH = -1
             parent.children[0].width = w + self.reduceW
             parent.children[0].height = h + self.reduceH
 
