@@ -30,7 +30,6 @@ class MainApp(App):
         self.text_color = MyColors.get_textcolor(WhiteBackColor)
         self.modes = ('Fly adapt', 'Size adapt', 'Fly+Size adapt','MARL adapt', 'GAN adapt')
         self.cols_rows = ('1х1', '2х2', '3х3', '4х4', '5х5', '6х6', '6x6 Apps')
-        random.shuffle(self.IdsApps)
 
     def build(self):
         # Root Layout
@@ -86,21 +85,24 @@ class MainApp(App):
         self.FlyScatters.clear()
         TextSize = self.colrowspinner.text
         colsrows = int(TextSize[0])
+
         if TextSize == '6x6 Apps':
             apps_mode = True
             colsrows = 6
+            random.shuffle(self.IdsApps)
 
-        for i in range(colsrows):#random.randint(5, 10)):
+        for i in range(colsrows):
             hor = BoxLayout(orientation='horizontal', padding=10, spacing=10, )
             for j in range(colsrows):#random.randint(1, 5)):
                 s = FlyScatterV3(do_rotation=True, do_scale=True, auto_bring_to_front=False)
                 hor.add_widget(s)
                 w = Widgets.get_random_widget() if not apps_mode else Widgets.get_app_icon(self.IdsApps[i*colsrows+j])
-                w.width = f'{(Window.width//colsrows)-70}dp'#f'{550 // colsrows}dp'
-                w.height = f'{(Window.height//colsrows)-70}dp'#f'{300 // colsrows}dp'
+                diffsize = 70 if not apps_mode else 40
+                w.width = f'{(Window.width//colsrows)-diffsize}dp'#f'{550 // colsrows}dp'
+                w.height = f'{(Window.height//colsrows)-diffsize}dp'#f'{300 // colsrows}dp'
                 s.add_widget(w)
                 self.FlyScatters.append(s)
-                #hor.add_widget(Widgets.get_random_widget())
+
             self.mainscreen_widgets.add_widget(hor)
 
     def init_hor_boxlayout(self,widjets):

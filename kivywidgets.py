@@ -46,7 +46,7 @@ class Widgets(object):
     def get_widget(name):
         return Widgets.get_random_widget(name)
 
-class FlyScatterV3(Scatter):#TouchRippleBehavior, Scatter):
+class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
     velocity = ListProperty([2, 1])
     emulation = BooleanProperty(False)
     mode = 'Fly adapt'
@@ -55,6 +55,7 @@ class FlyScatterV3(Scatter):#TouchRippleBehavior, Scatter):
     reduceW = -1
     reduceH = -1
     deltaposxy = 1
+    doublesize = BooleanProperty(False)
 
     def __init__(self, **kwargs):
         super(FlyScatterV3, self).__init__(**kwargs)
@@ -79,10 +80,10 @@ class FlyScatterV3(Scatter):#TouchRippleBehavior, Scatter):
             h = parent.children[0].height
             if self.raw_width == 0: self.raw_width = w
             if self.raw_height == 0: self.raw_height = h
-            if w < self.raw_width * 2 // 3: self.reduceW = 1
-            elif w > 2*self.raw_width: self.reduceW = -1
-            if h < self.raw_height * 2 // 3: self.reduceH = 1
-            elif h > 2*self.raw_height: self.reduceH = -1
+            if w < self.raw_width // 3: self.reduceW = 1
+            elif w > self.raw_width: self.reduceW = -1
+            if h < self.raw_height // 3: self.reduceH = 1
+            elif h > self.raw_height: self.reduceH = -1
             parent.children[0].width = w + self.reduceW
             parent.children[0].height = h + self.reduceH
 
@@ -102,6 +103,16 @@ class FlyScatterV3(Scatter):#TouchRippleBehavior, Scatter):
         else:
             Clock.unschedule(self.update_pos)
             return False
+
+    # def on_touch_move(self, touch):
+    #     if not self.doublesize:
+    #         self.children[0].width *= 2
+    #         self.children[0].height *= 2
+    #         self.doublesize = True
+    #     else:
+    #         self.children[0].width //= 2
+    #         self.children[0].height //= 2
+    #         self.doublesize = False
 
 KV = """
 <FlatButton>:
