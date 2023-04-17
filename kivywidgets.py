@@ -39,8 +39,13 @@ class Widgets(object):
 
     @staticmethod
     def get_app_icon(id=''):
-        id = random.randint(1,37) if (id is '') else id
-        return Image(source="data/icons/apps/"+str(id)+".png")
+        id = random.randint(1,41) if (id is '') else id
+        return Image(source="data/icons/apps/a"+str(id)+".png")
+
+    @staticmethod
+    def get_food_icon(id=''):
+        id = random.randint(1, 41) if (id is '') else id
+        return Image(source="data/icons/foods/f" + str(id) + ".png")
 
     @staticmethod
     def get_widget(name):

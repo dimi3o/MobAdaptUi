@@ -29,14 +29,14 @@ class MainApp(App):
         self.title = 'MARL Mobile User Interface v.'+__version__
         self.text_color = MyColors.get_textcolor(WhiteBackColor)
         self.modes = ('Fly adapt', 'Size adapt', 'Fly+Size adapt','MARL adapt', 'GAN adapt')
-        self.cols_rows = ('1х1', '2х2', '3х3', '4х4', '5х5', '6х6', '8x5 Apps')
+        self.cols_rows = ('1х1', '2х2', '3х3', '4х4', '5х5', '6х6', '8x5 Apps', '8x5 Foods')
 
     def build(self):
         # Root Layout
         self.root = BoxLayout(orientation='vertical', padding=10)  # ,size_hint_y=None)
 
         #HEAD PANEL
-        self.colrowspinner = Spinner(text=self.cols_rows[1], values=self.cols_rows, background_color=(0.527,0.154,0.861,1))
+        self.colrowspinner = Spinner(text=self.cols_rows[7], values=self.cols_rows, background_color=(0.527,0.154,0.861,1))
         self.colrowspinner.bind(text=self.colrowspinner_selected_value)
         lbl = Label(text='Size:', color=(0, 0, 1, 1))
         btn = Button(text='rebuild', size_hint_y=None, height='30dp', on_press=self.mainscreen_rebuild_btn_click)
@@ -84,23 +84,24 @@ class MainApp(App):
         self.mainscreen_rebuild_btn_click(self)
 
     def mainscreen_rebuild_btn_click(self, instance):
-        apps_mode = False
+        apps_mode = False; foods_mode = False
         self.mainscreen_widgets.clear_widgets()
         self.FlyScatters.clear()
         TextSize = self.colrowspinner.text
-        rows = int(TextSize[0]); cols = int(TextSize[2])
+        rows = int(TextSize[0])
+        cols = int(TextSize[2])
 
-        if TextSize == '8x5 Apps':
-            apps_mode = True
-            random.shuffle(self.IdsApps)
+        if TextSize == '8x5 Apps': apps_mode = True; random.shuffle(self.IdsApps)
+        if TextSize == '8x5 Foods': foods_mode = True; random.shuffle(self.IdsApps)
 
         for i in range(rows):
             hor = BoxLayout(orientation='horizontal', padding=10, spacing=10, )
             for j in range(cols):#random.randint(1, 5)):
                 s = FlyScatterV3(do_rotation=True, do_scale=True, auto_bring_to_front=False)
                 hor.add_widget(s)
-                w = Widgets.get_random_widget() if not apps_mode else Widgets.get_app_icon(self.IdsApps[i*cols+j])
-                diffsize = 70 if not apps_mode else 20
+                ids = self.IdsApps[i*cols+j]
+                w = Widgets.get_app_icon(ids) if apps_mode else Widgets.get_food_icon(ids) if foods_mode else Widgets.get_random_widget()
+                diffsize = 5 if apps_mode or foods_mode else 70
                 w.width = f'{(Window.width//cols)-diffsize}dp'#f'{550 // colsrows}dp'
                 w.height = f'{(Window.height//rows)-diffsize}dp'#f'{300 // colsrows}dp'
                 s.add_widget(w)
