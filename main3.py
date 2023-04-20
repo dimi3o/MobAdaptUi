@@ -77,11 +77,14 @@ class MainApp(App):
         return self.root
 
     def adapt_ui(self, instance):
+        m = self.modespinner.text
+        if m == 'MARL adapt' or m == 'GAN adapt':
+            self.show_popup('This adapt ui in the pipeline...', self.modespinner.text)
+            return
         for s in self.FlyScatters:
             s.change_emulation()
             s.mode = self.modespinner.text
             self.lblOnOff.text = 'ON' if s.emulation else 'OFF'
-        # self.show_popup('adapt ui '+mode+'...', self.modespinner.text)
 
     def colrowspinner_selected_value(self, spinner, text):
         self.mainscreen_rebuild_btn_click(self)
