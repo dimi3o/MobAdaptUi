@@ -22,25 +22,28 @@ __version__ = '0.0.3.0'
 
 class MainApp(App):
     FlyScatters = []
-    IdsApps = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40]
+    IdsPngs = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40]
 
     def __init__(self, **kwargs):
         super(MainApp, self).__init__(**kwargs)
         self.title = 'MARL Mobile User Interface v.'+__version__
         self.text_color = MyColors.get_textcolor(WhiteBackColor)
         self.modes = ('Fly adapt', 'Size adapt', 'Fly+Size adapt','MARL adapt', 'GAN adapt')
-        self.cols_rows = ('1х1', '2х2', '3х3', '4х4', '5х5', '6х6', '8x5 Apps', '8x5 Foods')
+        self.cols_rows = ('1х1', '2х2', '3х3', '4х4', '5х5', '6х6', '8x5')
+        self.objects = ('Apps', 'Foods', 'Widgets')
 
     def build(self):
         # Root Layout
         self.root = BoxLayout(orientation='vertical', padding=10)  # ,size_hint_y=None)
 
         #HEAD PANEL
-        self.colrowspinner = Spinner(text=self.cols_rows[7], values=self.cols_rows, background_color=(0.527,0.154,0.861,1))
+        self.colrowspinner = Spinner(text=self.cols_rows[6], values=self.cols_rows, background_color=(0.527, 0.154, 0.861, 1))
         self.colrowspinner.bind(text=self.colrowspinner_selected_value)
-        lbl = Label(text='Size:', color=(0, 0, 1, 1))
+        self.objectspinner = Spinner(text=self.objects[1], values=self.objects, background_color=(0.027, 0.954, 0.061, 1))
+        self.objectspinner.bind(text=self.colrowspinner_selected_value)
+        lbl = Label(text='Size/Objs:', color=(0, 0, 1, 1))
         btn = Button(text='rebuild', size_hint_y=None, height='30dp', on_press=self.mainscreen_rebuild_btn_click)
-        self.headpanel = self.init_hor_boxlayout([lbl, self.colrowspinner, btn])
+        self.headpanel = self.init_hor_boxlayout([lbl, self.colrowspinner, self.objectspinner, btn])
         self.root.add_widget(self.headpanel)
         self.headpanel.bind(size=self._update_rect_headpanel, pos=self._update_rect_headpanel)
 
@@ -88,20 +91,20 @@ class MainApp(App):
         self.mainscreen_widgets.clear_widgets()
         self.FlyScatters.clear()
         TextSize = self.colrowspinner.text
+        Objects = self.objectspinner.text
         rows = int(TextSize[0])
         cols = int(TextSize[2])
 
-        if TextSize == '8x5 Apps': apps_mode = True; random.shuffle(self.IdsApps)
-        if TextSize == '8x5 Foods': foods_mode = True; random.shuffle(self.IdsApps)
+        random.shuffle(self.IdsPngs)
 
         for i in range(rows):
             hor = BoxLayout(orientation='horizontal', padding=10, spacing=10, )
             for j in range(cols):#random.randint(1, 5)):
                 s = FlyScatterV3(do_rotation=True, do_scale=True, auto_bring_to_front=False)
                 hor.add_widget(s)
-                ids = self.IdsApps[i*cols+j]
-                w = Widgets.get_app_icon(ids) if apps_mode else Widgets.get_food_icon(ids) if foods_mode else Widgets.get_random_widget()
-                diffsize = 5 if apps_mode or foods_mode else 70
+                ids = self.IdsPngs[i*cols+j]
+                w = Widgets.get_app_icon(ids) if Objects=='Apps' else Widgets.get_food_icon(ids) if Objects=='Foods' else Widgets.get_random_widget()
+                diffsize = 50 if Objects=='Widgets' else 5
                 w.width = f'{(Window.width//cols)-diffsize}dp'#f'{550 // colsrows}dp'
                 w.height = f'{(Window.height//rows)-diffsize}dp'#f'{300 // colsrows}dp'
                 s.add_widget(w)
