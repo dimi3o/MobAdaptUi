@@ -108,8 +108,8 @@ class MainApp(App):
                 ids = self.IdsPngs[i*cols+j]
                 w = Widgets.get_app_icon(ids) if Objects=='Apps' else Widgets.get_food_icon(ids) if Objects=='Foods' else Widgets.get_random_widget()
                 diffsize = 50 if Objects=='Widgets' else 5
-                w.width = f'{(Window.width//cols)-diffsize}dp'#f'{550 // colsrows}dp'
-                w.height = f'{(Window.height//rows)-diffsize}dp'#f'{300 // colsrows}dp'
+                w.width = f'{550 // cols}dp'#f'{(Window.width//cols)-diffsize}dp'
+                w.height = f'{600 // rows}dp'#f'{(Window.height//rows)-diffsize}dp'
                 s.add_widget(w)
                 self.FlyScatters.append(s)
 
