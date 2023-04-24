@@ -1,6 +1,6 @@
 import random
 
-import colors
+import agent
 from colors import MyColors
 from kivywidgets import Widgets, FlyScatter, FlyScatterV3
 from kivy.app import App
@@ -31,6 +31,7 @@ class MainApp(App):
         self.modes = ('Fly adapt', 'Size adapt', 'Fly+Size adapt','MARL adapt', 'GAN adapt')
         self.cols_rows = ('1х1', '2х2', '3х3', '4х4', '5х5', '6х6', '8x5')
         self.objects = ('Apps', 'Foods', 'Widgets')
+        self.episodes = ('20', '200', '2000', '20000')
 
     def build(self):
         # Root Layout
@@ -53,15 +54,17 @@ class MainApp(App):
 
         #MAIN CONTENT
         self.mainscreen_widgets = BoxLayout(orientation='vertical', padding=0, spacing=0)
+        self.episodespinner = Spinner(text=self.episodes[1], values=self.episodes, size_hint_x=None, width='50dp', background_color=(0.225, 0.155, 0.564, 1))
         self.mainscreen_rebuild_btn_click(self)
         self.root.add_widget(self.mainscreen_widgets)
 
         #FOOT PANEL
-        self.modespinner = Spinner(text="Fly adapt", values=self.modes, background_color=(0.127,0.854,0.561,1))
-        btn = Button(text='adapt ui', size_hint_y=None, height='30dp', on_press=self.adapt_ui) #on_press=lambda null: self.show_popup('MARLMUI starting... '+self.modespinner.text, 'Info'))
-        lbl = Label(text='Select mode and press "adapt ui":', color=(0, 0, 1, 1)) #, size_hint_x=None, width='150dp')
+        self.modespinner = Spinner(text="MARL adapt", values=self.modes, background_color=(0.127,0.854,0.561,1))
+        btn = Button(text='ADAPT UI', size_hint_y=None, height='30dp', background_color=(1, 0, 0, 1), on_press=self.adapt_ui) #on_press=lambda null: self.show_popup('MARLMUI starting... '+self.modespinner.text, 'Info'))
+        lbl = Label(text='Adaptation:', color=(0, 0, 1, 1)) #, size_hint_x=None, width='150dp')
         self.lblOnOff = Label(text='OFF', size_hint_x=None, width='30dp', color=(1, 0, 0, 1))
-        self.footpanel = self.init_hor_boxlayout([lbl,self.modespinner, btn, self.lblOnOff])
+        self.total_reward = Label(text='0', size_hint_x=None, width='40dp', color=(0, 0, 1, 1))
+        self.footpanel = self.init_hor_boxlayout([lbl,self.modespinner, self.episodespinner, btn, self.lblOnOff, self.total_reward])
         self.root.add_widget(self.footpanel)
         self.footpanel.bind(size=self._update_rect_footpanel, pos=self._update_rect_footpanel)
         with self.footpanel.canvas.before:
@@ -78,39 +81,52 @@ class MainApp(App):
 
     def adapt_ui(self, instance):
         m = self.modespinner.text
-        if m == 'MARL adapt' or m == 'GAN adapt':
+        if m == 'GAN adapt':
             self.show_popup('This adapt ui in the pipeline...', self.modespinner.text)
             return
+        if m == 'MARL adapt' and self.lblOnOff.text == 'OFF':
+            self.total_reward.text = '0'
         for s in self.FlyScatters:
             s.change_emulation()
             s.mode = self.modespinner.text
+            if m == 'MARL adapt' and s.emulation:
+                s.agent.total_reward = 0
+                s.env.steps_left = int(self.episodespinner.text)
             self.lblOnOff.text = 'ON' if s.emulation else 'OFF'
+
+    def stop_emulation_async(self,Text='Stop emulation!', Header='Adapt', par=0):
+        if self.modespinner.text == 'MARL adapt':
+            self.total_reward.text = str(int(self.total_reward.text)+int(par))
+        if self.lblOnOff.text == 'ON':
+            self.lblOnOff.text = 'OFF'
+            self.show_popup(Text, Header)
 
     def colrowspinner_selected_value(self, spinner, text):
         self.mainscreen_rebuild_btn_click(self)
 
     def mainscreen_rebuild_btn_click(self, instance):
-        apps_mode = False; foods_mode = False
         self.mainscreen_widgets.clear_widgets()
         self.FlyScatters.clear()
         TextSize = self.colrowspinner.text
         Objects = self.objectspinner.text
         rows = int(TextSize[0])
         cols = int(TextSize[2])
-
         random.shuffle(self.IdsPngs)
-
         for i in range(rows):
             hor = BoxLayout(orientation='horizontal', padding=10, spacing=10, )
             for j in range(cols):#random.randint(1, 5)):
                 s = FlyScatterV3(do_rotation=True, do_scale=True, auto_bring_to_front=False)
+                s.app = self
+                s.env = agent.Environment(int(self.episodespinner.text))
+                s.agent = agent.Agent()
                 hor.add_widget(s)
                 ids = self.IdsPngs[i*cols+j]
                 w = Widgets.get_app_icon(ids) if Objects=='Apps' else Widgets.get_food_icon(ids) if Objects=='Foods' else Widgets.get_random_widget()
-                diffsize = 50 if Objects=='Widgets' else 5
-                w.width = f'{550 // cols}dp'#f'{(Window.width//cols)-diffsize}dp'
-                w.height = f'{600 // rows}dp'#f'{(Window.height//rows)-diffsize}dp'
+                w.width = f'{360 // cols}dp'#f'{Window.width//cols}dp'
+                w.height = f'{800 // rows}dp'#f'{Window.height//(rows+3)}dp'#
                 s.add_widget(w)
+                s.raw_width = w.width
+                s.raw_height = w.height
                 self.FlyScatters.append(s)
 
             self.mainscreen_widgets.add_widget(hor)

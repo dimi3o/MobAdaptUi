@@ -1,23 +1,26 @@
 import random
-from numpy import np
+import numpy as np
 
 
 class Environment:
-    def __init__(self):
-        self.steps_left = 10
+    def_episodes = 200
+
+    def __init__(self, episodes=def_episodes):
+        self.steps_left = episodes
 
     def get_observation(self):
         return [0.0, 0.0, 0.0]
 
+    # 0 - left, 1 - right, 2 - up, 3 - down, 4 - more, 5 - less
     def get_actions(self):
-        return [0, 1]
+        return [0, 1, 2, 3, 4, 5]
 
     def is_done(self):
-        return self.steps_left == 0
+        return self.steps_left <= 0
 
     def action(self, action):
-        if self.is_done():
-            raise Exception("Game is over")
+        # if self.is_done():
+        #     raise Exception("Game is over")
         self.steps_left -= 1
         return random.random()
 
@@ -28,8 +31,10 @@ class Agent:
     def step(self, env):
         current_obs = env.get_observation()
         actions = env.get_actions()
-        reward = env.action(random.choice(actions))
+        action = random.choice(actions)
+        reward = env.action(action)
         self.total_reward += reward
+        return action
 
 # if __name__ == "__main__":
 #     env = Environment()
