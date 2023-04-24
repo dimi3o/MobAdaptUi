@@ -5,9 +5,9 @@
 A simple Kivy Python application that adapts a tiled interface based on the number of clicks (a simple frequency analysis).
 The number of clicks on the button is the criterion of adaptation. We adapt the interface by a simple permutation, which varies to bring the buttons with the largest number of clicks closer to one of the 4 corners of the screen. The preferred edge setting is selected using the left, right, top, bottom keys.
 
-Version 0.0.3.0 (11.04.2023)
+Version 0.0.3.1 (25.04.2023)
 
-![img.png](data/MobAdaptUI_v3.gif)
+![img.png](data/MobAdaptUI_v3_Agents.gif)
 
 Version 0.0.2.0 (08.02.2022)
 

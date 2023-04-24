@@ -18,7 +18,7 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.graphics import Color, Rectangle
 
 WhiteBackColor = True
-__version__ = '0.0.3.0'
+__version__ = '0.0.3.1'
 
 class MainApp(App):
     FlyScatters = []
