@@ -11,9 +11,9 @@ class Environment:
     def get_observation(self):
         return [0.0, 0.0, 0.0]
 
-    # 0 - left, 1 - right, 2 - up, 3 - down, 4 - more, 5 - less
+    # 0 - left, 1 - right, 2 - up, 3 - down, 4 - more, 5 - less, 6 - rotate left, 7 - rotate right
     def get_actions(self):
-        return [0, 1, 2, 3, 4, 5]
+        return [0, 1, 2, 3, 4, 5, 6, 7]
 
     def is_done(self):
         return self.steps_left <= 0
