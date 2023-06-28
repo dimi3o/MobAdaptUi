@@ -125,6 +125,9 @@ class MainApp(App):
                 w.width = f'{360 // cols}dp'#f'{Window.width//cols}dp'
                 w.height = f'{800 // rows}dp'#f'{Window.height//(rows+3)}dp'#
                 s.add_widget(w)
+                wi = Widgets.get_random_widget('Label')
+                s.add_widget(wi)
+                wi.text = str(ids)
                 s.raw_width = w.width
                 s.raw_height = w.height
                 self.FlyScatters.append(s)

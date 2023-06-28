@@ -64,6 +64,7 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
     reduceH = -1
     deltaposxy = 1
     doublesize = BooleanProperty(False)
+    nx, ny = 0, 0
 
     def __init__(self, **kwargs):
         super(FlyScatterV3, self).__init__(**kwargs)
@@ -72,8 +73,11 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
         self.text = 'flyscatter'
         self.color = random.choice(allcolors)
 
+    def toFixed(self,numObj, digits=0): return f"{numObj:.{digits}f}"
 
     def update_pos(self, *args):
+        self.nx, self.ny = self.toFixed(self.x/Window.width, 2), self.toFixed(self.y/Window.height, 2)
+        self.children[0].text = f'{self.nx}, {self.ny}'
         if self.mode ==  'Rotate adapt' or self.mode == 'Fly+Size+Rotate adapt':
             self.rotation += random.choice([-1, 1])
         if self.mode == 'Fly adapt' or self.mode == 'Fly+Size+Rotate adapt':
@@ -84,14 +88,14 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
             if self.y < 0 or (self.y + 2*self.height//3) > Window.height:
                 self.velocity[1] *= -1
         if self.mode == 'Size adapt' or self.mode == 'Fly+Size+Rotate adapt':
-            w = self.children[0].width
-            h = self.children[0].height
+            w = self.children[1].width
+            h = self.children[1].height
             if w < self.raw_width // 3: self.reduceW = 1
             elif w > self.raw_width: self.reduceW = -1
             if h < self.raw_height // 3: self.reduceH = 1
             elif h > self.raw_height: self.reduceH = -1
-            self.children[0].width = w + self.reduceW
-            self.children[0].height = h + self.reduceH
+            self.children[1].width = w + self.reduceW
+            self.children[1].height = h + self.reduceH
         if self.mode == 'MARL adapt':
             e = self.env
             a = self.agent.step(e)
@@ -107,13 +111,13 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
         elif to==2 and self.y+self.height<Window.height: self.y += delta
         elif to==3 and self.y>0: self.y -= delta
         elif to==4:
-            if self.children[0].height < 3*self.raw_height:
-                self.children[0].width += delta
-                self.children[0].height += delta
+            if self.children[1].height < 3*self.raw_height:
+                self.children[1].width += delta
+                self.children[1].height += delta
         elif to==5:
-            if self.children[0].height > self.raw_height//2:
-                self.children[0].width -= delta
-                self.children[0].height -= delta
+            if self.children[1].height > self.raw_height//2:
+                self.children[1].width -= delta
+                self.children[1].height -= delta
         elif to==6: self.rotation -= 1
         elif to==7: self.rotation += 1
 
