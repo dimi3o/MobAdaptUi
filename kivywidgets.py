@@ -65,6 +65,7 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
     deltaposxy = 1
     doublesize = BooleanProperty(False)
     nx, ny = 0, 0
+    taps = 0
 
     def __init__(self, **kwargs):
         super(FlyScatterV3, self).__init__(**kwargs)
@@ -72,6 +73,11 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
         self.velocity[1] *= random.choice([-2, 2])
         self.text = 'flyscatter'
         self.color = random.choice(allcolors)
+
+    def on_touch_up(self, touch):
+        if touch.grab_current == self:
+            self.taps += 1
+            self.children[0].text = f'taps: {self.taps}'
 
     def toFixed(self,numObj, digits=0): return f"{numObj:.{digits}f}"
 
