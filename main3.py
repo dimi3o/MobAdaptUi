@@ -21,6 +21,7 @@ WhiteBackColor = True
 __version__ = '0.0.3.1'
 
 class MainApp(App):
+    sm = ScreenManager()
     FlyScatters = []
     IdsPngs = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40]
 
@@ -34,7 +35,7 @@ class MainApp(App):
         self.episodes = ('20', '200', '2000', '20000')
 
     def build(self):
-        # Root Layout
+        # MAIN SCREEN
         self.root = BoxLayout(orientation='vertical', padding=10)  # ,size_hint_y=None)
 
         #HEAD PANEL
@@ -60,24 +61,43 @@ class MainApp(App):
 
         #FOOT PANEL
         self.modespinner = Spinner(text="MARL adapt", values=self.modes, background_color=(0.127,0.854,0.561,1))
-        btn = Button(text='ADAPT UI', size_hint_y=None, height='30dp', background_color=(1, 0, 0, 1), on_press=self.adapt_ui) #on_press=lambda null: self.show_popup('MARLMUI starting... '+self.modespinner.text, 'Info'))
+        self.adapt_btn = Button(text='ADAPT UI', size_hint_y=None, height='30dp', background_color=(1, 0, 0, 1), on_press=self.adapt_ui) #on_press=lambda null: self.show_popup('MARLMUI starting... '+self.modespinner.text, 'Info'))
         lbl = Label(text='Adaptation:', color=(0, 0, 1, 1)) #, size_hint_x=None, width='150dp')
         self.lblOnOff = Label(text='OFF', size_hint_x=None, width='30dp', color=(1, 0, 0, 1))
         self.total_reward = Label(text='0', size_hint_x=None, width='40dp', color=(0, 0, 1, 1))
-        self.footpanel = self.init_hor_boxlayout([lbl,self.modespinner, self.episodespinner, btn, self.lblOnOff, self.total_reward])
+        btn1 = Button(text='SETT', size_hint_y=None, height='30dp', background_color=(0.2, 0.2, 0.2, 1), on_press=lambda null: self.to_screen('settings', 'left'))
+        self.footpanel = self.init_hor_boxlayout([lbl,self.modespinner, self.episodespinner, self.adapt_btn, btn1]) #self.lblOnOff, self.total_reward])
         self.root.add_widget(self.footpanel)
         self.footpanel.bind(size=self._update_rect_footpanel, pos=self._update_rect_footpanel)
         with self.footpanel.canvas.before:
             Color(0.827, 0.827, 0.827, 1.)
             self.rect_footpanel = Rectangle()
 
-        if WhiteBackColor:
-            self.root.bind(size=self._update_rect, pos=self._update_rect)
-            with self.root.canvas.before:
-                Color(1, 1, 1, 1)
-                self.rect = Rectangle(size=self.root.size, pos=self.root.pos)
+        self.add_screen('mainscreen', self.root)
 
-        return self.root
+        # SETTINGS SCREEN
+        self.root1 = BoxLayout(orientation='vertical', padding=10)
+        btn2 = Button(text='MAIN SCREEN', size_hint_y=None, height='30dp', background_color=(0.2, 0.2, 0.2, 1),
+                      on_press=lambda null: self.to_screen('mainscreen', 'right'))
+        self.root1.add_widget(btn2)
+        self.add_screen('settings', self.root1)
+
+        if WhiteBackColor:
+            self.sm.bind(size=self._update_rect, pos=self._update_rect)
+            with self.sm.canvas.before:
+                Color(1, 1, 1, 1)
+                self.rect = Rectangle(size=self.root.size, pos=self.sm.pos)
+
+        return self.sm
+
+    def add_screen(self, name, widget):
+        scr = Screen(name=name)
+        scr.add_widget(widget)
+        self.sm.add_widget(scr)
+
+    def to_screen(self, namescreen='mainscreen', direction='right'):
+        self.sm.transition.direction = direction
+        self.sm.current = namescreen
 
     def adapt_ui(self, instance):
         m = self.modespinner.text
@@ -93,12 +113,14 @@ class MainApp(App):
                 s.agent.total_reward = 0
                 s.env.steps_left = int(self.episodespinner.text)
             self.lblOnOff.text = 'ON' if s.emulation else 'OFF'
+            self.adapt_btn.background_color = (0.127,0.854,0.561,1) if s.emulation else (1, 0, 0, 1)
 
     def stop_emulation_async(self,Text='Stop emulation!', Header='Adapt', par=0):
         if self.modespinner.text == 'MARL adapt':
             self.total_reward.text = str(int(self.total_reward.text)+int(par))
         if self.lblOnOff.text == 'ON':
             self.lblOnOff.text = 'OFF'
+            self.adapt_btn.background_color = (1, 0, 0, 1)
             self.show_popup(Text, Header)
 
     def colrowspinner_selected_value(self, spinner, text):
