@@ -16,6 +16,8 @@ from kivy.uix.scatter import Scatter
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.uix.boxlayout import BoxLayout
 from kivy.graphics import Color, Rectangle
+from kivy.clock import Clock
+from kivy_garden.graph import LinePlot
 
 WhiteBackColor = True
 __version__ = '0.0.3.1'
@@ -24,6 +26,8 @@ class MainApp(App):
     sm = ScreenManager()
     FlyScatters = []
     IdsPngs = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40]
+    AdaptUiOnOff = False
+    total_reward = 0
 
     def __init__(self, **kwargs):
         super(MainApp, self).__init__(**kwargs)
@@ -63,10 +67,8 @@ class MainApp(App):
         self.modespinner = Spinner(text="MARL adapt", values=self.modes, background_color=(0.127,0.854,0.561,1))
         self.adapt_btn = Button(text='ADAPT UI', size_hint_y=None, height='30dp', background_color=(1, 0, 0, 1), on_press=self.adapt_ui) #on_press=lambda null: self.show_popup('MARLMUI starting... '+self.modespinner.text, 'Info'))
         lbl = Label(text='Adaptation:', color=(0, 0, 1, 1)) #, size_hint_x=None, width='150dp')
-        self.lblOnOff = Label(text='OFF', size_hint_x=None, width='30dp', color=(1, 0, 0, 1))
-        self.total_reward = Label(text='0', size_hint_x=None, width='40dp', color=(0, 0, 1, 1))
-        btn1 = Button(text='SETT', size_hint_y=None, height='30dp', background_color=(0.2, 0.2, 0.2, 1), on_press=lambda null: self.to_screen('settings', 'left'))
-        self.footpanel = self.init_hor_boxlayout([lbl,self.modespinner, self.episodespinner, self.adapt_btn, btn1]) #self.lblOnOff, self.total_reward])
+        btn1 = Button(text='SETTINGS', size_hint_y=None, height='30dp', background_color=(0.2, 0.2, 0.2, 1), on_press=lambda null: self.to_screen('settings', 'left'))
+        self.footpanel = self.init_hor_boxlayout([lbl,self.modespinner, self.episodespinner, self.adapt_btn, btn1])
         self.root.add_widget(self.footpanel)
         self.footpanel.bind(size=self._update_rect_footpanel, pos=self._update_rect_footpanel)
         with self.footpanel.canvas.before:
@@ -77,6 +79,12 @@ class MainApp(App):
 
         # SETTINGS SCREEN
         self.root1 = BoxLayout(orientation='vertical', padding=10)
+        self.root1.add_widget(Label(text='TOTAL REWARD', color=[1, 0, 0, 1]))
+        self.reward_graph = Widgets.get_graph_widget(5, 5, 0, 1, 0, 1, 'Time, [sec]')
+        self.graph_layout = BoxLayout(orientation='horizontal', size_hint_y=None, height=Window.width*2/3)
+        self.graph_layout.add_widget(self.reward_graph)
+        self.root1.add_widget(self.graph_layout)
+        #self.root1.add_widget(self.reward_graph)
         btn2 = Button(text='MAIN SCREEN', size_hint_y=None, height='30dp', background_color=(0.2, 0.2, 0.2, 1),
                       on_press=lambda null: self.to_screen('mainscreen', 'right'))
         self.root1.add_widget(btn2)
@@ -104,24 +112,49 @@ class MainApp(App):
         if m == 'GAN adapt':
             self.show_popup('This adapt ui in the pipeline...', self.modespinner.text)
             return
-        if m == 'MARL adapt' and self.lblOnOff.text == 'OFF':
-            self.total_reward.text = '0'
+
+        self.AdaptUiOnOff = not self.AdaptUiOnOff
+        if m == 'MARL adapt' and self.AdaptUiOnOff == False: self.total_reward = 0
         for s in self.FlyScatters:
             s.change_emulation()
             s.mode = self.modespinner.text
             if m == 'MARL adapt' and s.emulation:
                 s.agent.total_reward = 0
                 s.env.steps_left = int(self.episodespinner.text)
-            self.lblOnOff.text = 'ON' if s.emulation else 'OFF'
             self.adapt_btn.background_color = (0.127,0.854,0.561,1) if s.emulation else (1, 0, 0, 1)
+        if self.AdaptUiOnOff:
+            Clock.schedule_interval(self._update_clock, 1 / 4.)
+            self.total_reward = 0
+            self.reset_reward_graph()
 
     def stop_emulation_async(self,Text='Stop emulation!', Header='Adapt', par=0):
-        if self.modespinner.text == 'MARL adapt':
-            self.total_reward.text = str(int(self.total_reward.text)+int(par))
-        if self.lblOnOff.text == 'ON':
-            self.lblOnOff.text = 'OFF'
+        # if self.modespinner.text == 'MARL adapt':
+        #     self.total_reward += int(par)
+        if self.AdaptUiOnOff == True:
+            self.AdaptUiOnOff = False
+            Clock.unschedule(self._update_clock)
             self.adapt_btn.background_color = (1, 0, 0, 1)
             self.show_popup(Text, Header)
+
+    def _update_clock(self, dt):
+        reward = self.total_reward
+        if self.reward_graph.ymax < reward: self.reward_graph.ymax = reward
+        elif self.reward_graph.ymin > reward: self.reward_graph.ymin = reward
+        if abs(reward) > self.reward_graph.y_ticks_major * 10: self.reward_graph.y_ticks_major *= 2
+        if self.reward_graph.xmax > self.reward_graph.x_ticks_major * 5: self.reward_graph.x_ticks_major *= 4
+        if self.reward_graph.xmax > 1: self.reward_graph.xmin = 1
+        self.reward_points.append((self.reward_graph.xmax, reward))
+        self.reward_plot.points = [(x, y) for x, y in self.reward_points]
+        self.reward_graph.xmax += 1
+
+    def reset_reward_graph(self):
+        try: self.reward_graph.remove_plot(self.reward_plot)
+        except: pass
+        self.reward_plot = LinePlot(line_width=2, color=[1, 0, 0, 1])
+        self.reward_graph.add_plot(self.reward_plot)
+        self.reward_points = []
+        self.reward_graph.x_ticks_major = 5; self.reward_graph.y_ticks_major = 5
+        self.reward_graph.xmin = 0; self.reward_graph.xmax = 1; self.reward_graph.ymin = 0; self.reward_graph.ymax = 1
 
     def colrowspinner_selected_value(self, spinner, text):
         self.mainscreen_rebuild_btn_click(self)

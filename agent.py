@@ -15,6 +15,9 @@ class Environment:
     def get_actions(self):
         return [0, 1, 2, 3, 4, 5, 6, 7]
 
+    def get_rewards(self):
+        return [-4, -3, -2, -1, 0, 1, 2, 3, 4]
+
     def is_done(self):
         return self.steps_left <= 0
 
@@ -22,7 +25,7 @@ class Environment:
         # if self.is_done():
         #     raise Exception("Game is over")
         self.steps_left -= 1
-        return random.random()
+        return random.random()-0.5 #random.choice(self.get_rewards())
 
 class Agent:
     def __init__(self):
@@ -34,7 +37,7 @@ class Agent:
         action = random.choice(actions)
         reward = env.action(action)
         self.total_reward += reward
-        return action
+        return action, reward
 
 # if __name__ == "__main__":
 #     env = Environment()

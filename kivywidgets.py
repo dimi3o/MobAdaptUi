@@ -16,6 +16,7 @@ from kivy.uix.scatter import Scatter
 from kivy.properties import ListProperty, BooleanProperty
 from kivy.core.window import Window
 from kivy.clock import Clock
+from kivy_garden.graph import Graph, LinePlot
 from colors import allcolors
 
 widgets = ['Image','TextInput','Label','Button','CheckBox','Slider','Switch','Spinner','ProgressBar','FlyLabel','FlatButton']
@@ -50,6 +51,30 @@ class Widgets(object):
     @staticmethod
     def get_widget(name):
         return Widgets.get_random_widget(name)
+
+    @staticmethod
+    def get_graph_widget(x_ticks_major=5, y_ticks_major=5, xmin=0, xmax=1, ymin=0, ymax=30, xlabel='Time',
+                         WhiteBackColor=True):
+        graph_theme = {
+            'label_options': {
+                'color': [0, 0, 0, 1],  # color of tick labels and titles
+                'bold': False},
+            'background_color': [1, 1, 1, 1],  # back ground color of canvas
+            'tick_color': [0, 0, 0, 1],  # ticks and grid
+            'border_color': [0, 0, 0, 1]}  # border drawn around each graph
+        if WhiteBackColor:
+            graph = Graph(**graph_theme)
+        else:
+            graph = Graph()
+        if xlabel is not None: graph.xlabel = xlabel
+        graph.x_ticks_minor = 0
+        graph.x_ticks_major = x_ticks_major; graph.y_ticks_major = y_ticks_major
+        graph.y_grid_label = True; graph.x_grid_label = True
+        graph.padding = 5
+        graph.x_grid = True; graph.y_grid = True
+        graph.xmin = xmin; graph.xmax = xmax; graph.ymin = ymin; graph.ymax = ymax
+        graph.tick_color = [0, 0, 0, 1]
+        return graph
 
 class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
     velocity = ListProperty([2, 1])
@@ -104,8 +129,9 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
             self.children[1].height = h + self.reduceH
         if self.mode == 'MARL adapt':
             e = self.env
-            a = self.agent.step(e)
+            a, r = self.agent.step(e)
             self.change_pos_size(a)
+            self.app.total_reward += r
             if e.is_done():
                 self.emulation = self.set_emulation(False)
                 self.app.stop_emulation_async('MARL adapt is stopped. End of episode!', 'Adapt', self.agent.total_reward)
