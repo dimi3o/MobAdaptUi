@@ -1,5 +1,5 @@
 import random
-import agent
+import math as m
 from kivy.metrics import dp
 from kivy.lang import Builder
 from kivy.uix.label import Label
@@ -83,13 +83,15 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
     app = None
     agent = None
     env = None
+    id = None
     raw_height = 0
     raw_width = 0
+    raw_rotate = 0
     reduceW = -1
     reduceH = -1
     deltaposxy = 1
     doublesize = BooleanProperty(False)
-    nx, ny = 0, 0
+    nx, ny, ns, nr = 0, 0, 0, 0
     taps = 0
 
     def __init__(self, **kwargs):
@@ -103,12 +105,12 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
         if touch.grab_current == self:
             self.taps += 1
             self.children[0].text = f'taps: {self.taps}'
+            self.calc_norm_values()
+            print(self.id, self.taps, self.nx, self.ny, self.ns, self.nr)
 
     def toFixed(self,numObj, digits=0): return f"{numObj:.{digits}f}"
 
     def update_pos(self, *args):
-        self.nx, self.ny = self.toFixed(self.x/Window.width, 2), self.toFixed(self.y/Window.height, 2)
-        self.children[0].text = f'{self.nx}, {self.ny}'
         if self.mode ==  'Rotate adapt' or self.mode == 'Fly+Size+Rotate adapt':
             self.rotation += random.choice([-1, 1])
         if self.mode == 'Fly adapt' or self.mode == 'Fly+Size+Rotate adapt':
@@ -133,23 +135,34 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
             self.change_pos_size(a)
             self.app.total_reward += r
             if e.is_done():
+                self.calc_norm_values()
+                print(self.id, self.taps, self.nx, self.ny, self.ns, self.nr)
                 self.emulation = self.set_emulation(False)
                 self.app.stop_emulation_async('MARL adapt is stopped. End of episode!', 'Adapt', self.agent.total_reward)
+        self.calc_norm_values()
+        self.children[0].text = f'{self.nx}, {self.ny}'
+
+    def calc_norm_values(self):
+        self.ns = self.toFixed(self.scale, 2)
+        self.nx, self.ny = self.toFixed(self.x / Window.width, 2), self.toFixed(self.y / Window.height, 2)
+        self.nr = self.toFixed(-m.sin(self.rotation / 180 * m.pi), 2)
 
     # 0 - left, 1 - right, 2 - up, 3 - down, 4 - more, 5 - less
-    def change_pos_size(self, to=0, delta=1):
-        if to==0 and self.x>0: self.x -= delta
-        elif to==1 and self.x+self.width<Window.width: self.x += delta
-        elif to==2 and self.y+self.height<Window.height: self.y += delta
-        elif to==3 and self.y>0: self.y -= delta
+    def change_pos_size(self, to=0, deltapos=1, deltascale=0.01):
+        if to==0 and self.x>0: self.x -= deltapos
+        elif to==1 and self.x+self.width<Window.width: self.x += deltapos
+        elif to==2 and self.y+self.height<Window.height: self.y += deltapos
+        elif to==3 and self.y>0: self.y -= deltapos
         elif to==4:
-            if self.children[1].height < 3*self.raw_height:
-                self.children[1].width += delta
-                self.children[1].height += delta
+            self.scale += deltascale
+            # if self.children[1].height < 3*self.raw_height:
+            #     self.children[1].width += delta
+            #     self.children[1].height += delta
         elif to==5:
-            if self.children[1].height > self.raw_height//2:
-                self.children[1].width -= delta
-                self.children[1].height -= delta
+            self.scale -= deltascale
+            # if self.children[1].height > self.raw_height//2:
+            #     self.children[1].width -= delta
+            #     self.children[1].height -= delta
         elif to==6: self.rotation -= 1
         elif to==7: self.rotation += 1
 

@@ -175,7 +175,7 @@ class MainApp(App):
                 s.env = agent.Environment(int(self.episodespinner.text))
                 s.agent = agent.Agent()
                 hor.add_widget(s)
-                ids = self.IdsPngs[i*cols+j]
+                s.id = ids = self.IdsPngs[i*cols+j]
                 w = Widgets.get_app_icon(ids) if Objects=='Apps' else Widgets.get_food_icon(ids) if Objects=='Foods' else Widgets.get_random_widget()
                 w.width = f'{360 // cols}dp'#f'{Window.width//cols}dp'
                 w.height = f'{800 // rows}dp'#f'{Window.height//(rows+3)}dp'#
@@ -185,6 +185,7 @@ class MainApp(App):
                 wi.text = str(ids)
                 s.raw_width = w.width
                 s.raw_height = w.height
+                s.raw_rotate = s.rotation
                 self.FlyScatters.append(s)
 
             self.mainscreen_widgets.add_widget(hor)
