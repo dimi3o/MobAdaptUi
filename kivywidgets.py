@@ -76,6 +76,15 @@ class Widgets(object):
         graph.tick_color = [0, 0, 0, 1]
         return graph
 
+    @staticmethod
+    def target_ui(name='rus'):
+        if name=='rus':
+            return [[18, 0.12, 0.19, 0.97, 0.00],[40, 0.04, 0.75, 0.88, 0.28],[36, 0.39, 0.42, 1.03, 0.05],[16, 0.05, 0.42, 1.11, -0.02],[5, 0.82, 0.37, 1.01, 0.00],[12, 0.30, 0.84, 1.03, -0.16],[29, 0.18, 0.67, 1.05, -0.33],[20, 0.31, 0.00, 1.99, 0.72],[11, 0.33, 0.66, 0.94, 0.05],[30, 0.67, 0.00, 1.92, 0.40],[3, 0.28, 0.27, 1.33, 0.03],[4, 0.46, 0.80, 1.08, -0.07],[32, 0.62, 0.67, 1.00, -0.21],[25, 0.53, 0.71, 1.00, -0.17],[19, 0.42, 0.66, 0.98, 0.29],[7, 0.02, 0.22, 1.00, -0.28],[2, 0.82, 0.66, 1.07, -0.07],[1, 0.02, 0.31, 1.07, 0.12],[9, 0.59, 0.81, 1.02, -0.05],[33, 0.65, 0.24, 1.08, -0.21],[21, 0.08, 0.66, 1.09, 0.05],[39, 0.07, 0.82, 1.06, 0.09],[13, 0.35, 0.75, 1.02, 0.14],[35, 0.22, 0.78, 1.08, -0.17],[24, 0.82, 0.82, 0.93, 0.05],[28, 0.39, 0.79, 1.10, 0.22],[17, 0.19, 0.23, 1.01, -0.14],[6, 0.01, 0.00, 2.21, 0.48], [26, 0.55, 0.83, 0.87, 0.02],[38, 0.55, 0.66, 0.96, -0.14],[22, 0.19, 0.37, 1.00, 0.16],[31, 0.79, 0.66, 0.97, -0.10],[37, 0.22, 0.75, 1.09, -0.05],[14, 0.61, 0.70, 1.05, 0.16],[10, 0.50, 0.18, 1.52, -0.09],[8, 0.28, 0.19, 1.10, -0.05],[34, 0.78, 0.21, 1.43, 0.24],[15, 0.76, 0.78, 1.05, -0.02],[23, 0.46, 0.31, 1.56, -0.34],[27, 0.10, 0.71, 0.86, 0.10]]
+        elif name=='eur':
+            return [[],[]]
+        elif name=='asia':
+            return [[],[]]
+
 class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
     velocity = ListProperty([2, 1])
     emulation = BooleanProperty(False)
@@ -106,7 +115,7 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
             self.taps += 1
             self.children[0].text = f'taps: {self.taps}'
             self.calc_norm_values()
-            print(self.id, self.taps, self.nx, self.ny, self.ns, self.nr)
+        print(self.id, self.taps, self.nx, self.ny, self.ns, self.nr)
 
     def toFixed(self,numObj, digits=0): return f"{numObj:.{digits}f}"
 
@@ -129,17 +138,16 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
             elif h > self.raw_height: self.reduceH = -1
             self.children[1].width = w + self.reduceW
             self.children[1].height = h + self.reduceH
+        self.calc_norm_values()
         if self.mode == 'MARL adapt':
             e = self.env
             a, r = self.agent.step(e)
             self.change_pos_size(a)
             self.app.total_reward += r
             if e.is_done():
-                self.calc_norm_values()
-                print(self.id, self.taps, self.nx, self.ny, self.ns, self.nr)
                 self.emulation = self.set_emulation(False)
                 self.app.stop_emulation_async('MARL adapt is stopped. End of episode!', 'Adapt', self.agent.total_reward)
-        self.calc_norm_values()
+                print(self.id, self.taps, self.nx, self.ny, self.ns, self.nr)
         self.children[0].text = f'{self.nx}, {self.ny}'
 
     def calc_norm_values(self):

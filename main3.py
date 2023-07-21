@@ -36,6 +36,7 @@ class MainApp(App):
         self.modes = ('Fly adapt', 'Size adapt', 'Rotate adapt', 'Fly+Size+Rotate adapt','MARL adapt', 'GAN adapt')
         self.cols_rows = ('1х1', '2х2', '3х3', '4х4', '5х5', '6х6', '8x5')
         self.objects = ('Apps', 'Foods', 'Widgets')
+        self.kitchen = ('rus', 'eur', 'asia')
         self.episodes = ('20', '200', '2000', '20000')
 
     def build(self):
@@ -79,9 +80,11 @@ class MainApp(App):
 
         # SETTINGS SCREEN
         self.root1 = BoxLayout(orientation='vertical', padding=10)
+        self.kitchenspinner = Spinner(text=self.kitchen[0], values=self.kitchen, background_color=(0.027, 0.954, 0.061, 1))
+        self.root1.add_widget(self.init_hor_boxlayout([Label(text='Kitchen:', color=(0, 0, 1, 1)),self.kitchenspinner]))
         self.root1.add_widget(Label(text='TOTAL REWARD', color=[1, 0, 0, 1]))
         self.reward_graph = Widgets.get_graph_widget(5, 5, 0, 1, 0, 1, 'Time, [sec]')
-        self.graph_layout = BoxLayout(orientation='horizontal', size_hint_y=None, height=Window.width*2/3)
+        self.graph_layout = BoxLayout(orientation='horizontal', size_hint_y=None, height=Window.height*3/4)
         self.graph_layout.add_widget(self.reward_graph)
         self.root1.add_widget(self.graph_layout)
         #self.root1.add_widget(self.reward_graph)
@@ -126,6 +129,7 @@ class MainApp(App):
             Clock.schedule_interval(self._update_clock, 1 / 4.)
             self.total_reward = 0
             self.reset_reward_graph()
+        else: print('- adapt ui stopped -')
 
     def stop_emulation_async(self,Text='Stop emulation!', Header='Adapt', par=0):
         # if self.modespinner.text == 'MARL adapt':
@@ -134,7 +138,8 @@ class MainApp(App):
             self.AdaptUiOnOff = False
             Clock.unschedule(self._update_clock)
             self.adapt_btn.background_color = (1, 0, 0, 1)
-            self.show_popup(Text, Header)
+            #self.show_popup(Text, Header)
+            print('- end of episode -')
 
     def _update_clock(self, dt):
         reward = self.total_reward
