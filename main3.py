@@ -28,6 +28,7 @@ class MainApp(App):
     IdsPngs = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40]
     AdaptUiOnOff = False
     total_reward = 0
+    target_ui_vect = []
 
     def __init__(self, **kwargs):
         super(MainApp, self).__init__(**kwargs)
@@ -81,7 +82,10 @@ class MainApp(App):
         # SETTINGS SCREEN
         self.root1 = BoxLayout(orientation='vertical', padding=10)
         self.kitchenspinner = Spinner(text=self.kitchen[0], values=self.kitchen, background_color=(0.027, 0.954, 0.061, 1))
+        self.kitchenspinner.bind(text=self.target_ui_selected_value)
         self.root1.add_widget(self.init_hor_boxlayout([Label(text='Kitchen:', color=(0, 0, 1, 1)),self.kitchenspinner]))
+        self.lblTargetUiVect = Label(text='[]', color=(0, 0, 0, 1), text_size=(None, 20), halign='right')
+        self.root1.add_widget(self.lblTargetUiVect)
         self.root1.add_widget(Label(text='TOTAL REWARD', color=[1, 0, 0, 1]))
         self.reward_graph = Widgets.get_graph_widget(5, 5, 0, 1, 0, 1, 'Time, [sec]')
         self.graph_layout = BoxLayout(orientation='horizontal', size_hint_y=None, height=Window.height*3/4)
@@ -91,6 +95,7 @@ class MainApp(App):
         btn2 = Button(text='MAIN SCREEN', size_hint_y=None, height='30dp', background_color=(0.2, 0.2, 0.2, 1),
                       on_press=lambda null: self.to_screen('mainscreen', 'right'))
         self.root1.add_widget(btn2)
+        self.target_ui_selected_value(self.kitchenspinner, self.kitchenspinner.text)
         self.add_screen('settings', self.root1)
 
         if WhiteBackColor:
@@ -132,9 +137,8 @@ class MainApp(App):
         else: print('- adapt ui stopped -')
 
     def stop_emulation_async(self,Text='Stop emulation!', Header='Adapt', par=0):
-        # if self.modespinner.text == 'MARL adapt':
-        #     self.total_reward += int(par)
-        if self.AdaptUiOnOff == True:
+        # if self.modespinner.text == 'MARL adapt': self.total_reward += int(par)
+        if self.AdaptUiOnOff:
             self.AdaptUiOnOff = False
             Clock.unschedule(self._update_clock)
             self.adapt_btn.background_color = (1, 0, 0, 1)
@@ -161,6 +165,11 @@ class MainApp(App):
         self.reward_graph.x_ticks_major = 5; self.reward_graph.y_ticks_major = 5
         self.reward_graph.xmin = 0; self.reward_graph.xmax = 1; self.reward_graph.ymin = 0; self.reward_graph.ymax = 1
 
+    def target_ui_selected_value(self, spinner, text):
+        self.target_ui_vect = Widgets.target_ui(text)
+        print(self.target_ui_vect[1][1])
+        self.lblTargetUiVect.text = str(self.target_ui_vect).replace(' ','')
+
     def colrowspinner_selected_value(self, spinner, text):
         self.mainscreen_rebuild_btn_click(self)
 
@@ -175,9 +184,9 @@ class MainApp(App):
         for i in range(rows):
             hor = BoxLayout(orientation='horizontal', padding=10, spacing=10, )
             for j in range(cols):#random.randint(1, 5)):
-                s = FlyScatterV3(do_rotation=True, do_scale=True, auto_bring_to_front=False)
+                s = FlyScatterV3(do_rotation=True, do_scale=True, auto_bring_to_front=True)
                 s.app = self
-                s.env = agent.Environment(int(self.episodespinner.text))
+                s.env = agent.Environment(int(self.episodespinner.text), self)
                 s.agent = agent.Agent()
                 hor.add_widget(s)
                 s.id = ids = self.IdsPngs[i*cols+j]

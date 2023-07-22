@@ -4,9 +4,12 @@ import numpy as np
 
 class Environment:
     def_episodes = 200
+    app = None
+    vect_state = []
 
-    def __init__(self, episodes=def_episodes):
+    def __init__(self, episodes=def_episodes, app_context=None):
         self.steps_left = episodes
+        self.app = app_context
 
     def get_observation(self):
         return [0.0, 0.0, 0.0]
@@ -16,16 +19,28 @@ class Environment:
         return [0, 1, 2, 3, 4, 5, 6, 7]
 
     def get_rewards(self):
-        return [-4, -3, -2, -1, 0, 1, 2, 3, 4]
+        cuv = self.vect_state #0 - self.id, 1 - self.taps, 2 - self.nx, 3 - self.ny, 4 - self.ns, 5 - self.nr
+        tuv = self.app.target_ui_vect[cuv[0]-1] # 0 - self.nx, 1 - self.ny, 2 - self.ns, 3 - self.nr
+        R1 = 1 - abs(tuv[0] - cuv[2])  # nx, position X
+        R2 = 1 - abs(tuv[1] - cuv[3])  # ny, position Y
+        R3 = 1 - abs(tuv[2] - cuv[4])/10  # ns, scale
+        R4 = 1 - abs(tuv[3] - cuv[5])  # ny, rotate
+        R5 = cuv[1] / 10. if cuv[1]<=10 else 1  # taps
+        R0 = [R1, R2, R3, R4, R5] # if cuv[1]>0: print(R0,':',cuv,tuv)
+        return R0
+
+    def action(self, action):
+        self.steps_left -= 1 # if self.is_done(): raise Exception("Game is over")
+        rewards = self.get_rewards()
+        rewards.sort()  #reverse=True)
+        sra = sum(rewards)/len(rewards)
+        return sra
+        #return random.choice(rewards)
+        #return random.random()-0.5
+        #return random.choice(self.get_rewards())
 
     def is_done(self):
         return self.steps_left <= 0
-
-    def action(self, action):
-        # if self.is_done():
-        #     raise Exception("Game is over")
-        self.steps_left -= 1
-        return random.random()-0.5 #random.choice(self.get_rewards())
 
 class Agent:
     def __init__(self):
@@ -69,10 +84,10 @@ def sin(left):
 def tan(left):
     return np.tan(left)
 
-def max(nums):
+def npmax(nums):
     return np.maxmimum(nums)
 
-def min(nums):
+def npmin(nums):
     return np.minimum(nums)
 
 def pass_greater(left, right):
