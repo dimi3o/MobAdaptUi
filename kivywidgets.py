@@ -110,28 +110,47 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
         self.text = 'flyscatter'
         self.color = random.choice(allcolors)
 
+    # def on_touch_down(self, touch):
+    #     if touch.grab_current == self: self.tap_event()
+    #     super(FlyScatterV3, self).on_touch_down(touch)
+
     def on_touch_up(self, touch):
-        if touch.grab_current == self:
-            self.taps += 1
-            self.children[0].text = f'taps: {self.taps}'
-            self.calc_norm_values()
-            _, r = self.MARL_core()
-            print(r)
+        if touch.grab_current == self: self.tap_event()
         #print(self.id, self.taps, self.nx, self.ny, self.ns, self.nr)
+        super(FlyScatterV3, self).on_touch_up(touch)
+
+    def tap_event(self):
+        self.taps += 1
+        self.children[0].text = f'taps: {self.taps}'
+        self.calc_norm_values()
+        _, r = self.MARL_core()
+        print(r)
 
     def toFixed(self,numObj, digits=0): return f"{numObj:.{digits}f}"
 
     def update_pos(self, *args):
-        if self.mode ==  'Rotate adapt' or self.mode == 'Fly+Size+Rotate adapt':
+        self.calc_norm_values()
+        if self.mode == 'MARL adapt':
+            a, r = self.MARL_core()
+            self.change_pos_size(a)
+            self.app.total_reward = self.app.total_reward * self.app.y_discount + r
+            self.app.rewards_count += 1
+            if self.env.is_done():
+                self.emulation = self.set_emulation(False)
+                self.app.stop_emulation_async('MARL adapt is stopped. End of episode!', 'Adapt',
+                                              self.agent.total_reward)
+                print(self.id, self.taps, self.nx, self.ny, self.ns, self.nr)
+            self.children[0].text = f'{self.nx}, {self.ny}'
+        elif self.mode ==  'Rotate adapt' or self.mode == 'Fly+Size+Rotate adapt':
             self.rotation += random.choice([-1, 1])
-        if self.mode == 'Fly adapt' or self.mode == 'Fly+Size+Rotate adapt':
+        elif self.mode == 'Fly adapt' or self.mode == 'Fly+Size+Rotate adapt':
             self.x += self.deltaposxy*self.velocity[0]
             self.y += self.deltaposxy*self.velocity[1]
             if self.x < 0 or (self.x + 2*self.width//3) > Window.width:
                 self.velocity[0] *= -1
             if self.y < 0 or (self.y + 2*self.height//3) > Window.height:
                 self.velocity[1] *= -1
-        if self.mode == 'Size adapt' or self.mode == 'Fly+Size+Rotate adapt':
+        elif self.mode == 'Size adapt' or self.mode == 'Fly+Size+Rotate adapt':
             w = self.children[1].width
             h = self.children[1].height
             if w < self.raw_width // 3: self.reduceW = 1
@@ -140,16 +159,7 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
             elif h > self.raw_height: self.reduceH = -1
             self.children[1].width = w + self.reduceW
             self.children[1].height = h + self.reduceH
-        self.calc_norm_values()
-        if self.mode == 'MARL adapt':
-            a, r = self.MARL_core()
-            self.change_pos_size(a)
-            self.app.total_reward += r
-            if self.env.is_done():
-                self.emulation = self.set_emulation(False)
-                self.app.stop_emulation_async('MARL adapt is stopped. End of episode!', 'Adapt', self.agent.total_reward)
-                print(self.id, self.taps, self.nx, self.ny, self.ns, self.nr)
-        self.children[0].text = f'{self.nx}, {self.ny}'
+
 
     def MARL_core(self):
         e = self.env

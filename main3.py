@@ -27,7 +27,9 @@ class MainApp(App):
     FlyScatters = []
     IdsPngs = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40]
     AdaptUiOnOff = False
+    y_discount = 0.99
     total_reward = 0
+    rewards_count = 0
     target_ui_vect = []
 
     def __init__(self, **kwargs):
@@ -81,13 +83,13 @@ class MainApp(App):
 
         # SETTINGS SCREEN
         self.root1 = BoxLayout(orientation='vertical', padding=10)
+        self.lblTargetUiVect = Label(text='[]', color=(0, 0, 0, 1), text_size=(None, 30), halign='left')
+        self.root1.add_widget(self.lblTargetUiVect)
         self.kitchenspinner = Spinner(text=self.kitchen[0], values=self.kitchen, background_color=(0.027, 0.954, 0.061, 1))
         self.kitchenspinner.bind(text=self.target_ui_selected_value)
         self.root1.add_widget(self.init_hor_boxlayout([Label(text='Kitchen:', color=(0, 0, 1, 1)),self.kitchenspinner]))
-        self.lblTargetUiVect = Label(text='[]', color=(0, 0, 0, 1), text_size=(None, 20), halign='right')
-        self.root1.add_widget(self.lblTargetUiVect)
         self.root1.add_widget(Label(text='TOTAL REWARD', color=[1, 0, 0, 1]))
-        self.reward_graph = Widgets.get_graph_widget(5, 5, 0, 1, 0, 1, 'Time, [sec]')
+        self.reward_graph = Widgets.get_graph_widget(1, 1, 0, 1, 0, 1, 'Time, [sec]')
         self.graph_layout = BoxLayout(orientation='horizontal', size_hint_y=None, height=Window.height*3/4)
         self.graph_layout.add_widget(self.reward_graph)
         self.root1.add_widget(self.graph_layout)
@@ -122,7 +124,9 @@ class MainApp(App):
             return
 
         self.AdaptUiOnOff = not self.AdaptUiOnOff
-        if m == 'MARL adapt' and self.AdaptUiOnOff == False: self.total_reward = 0
+        if m == 'MARL adapt' and self.AdaptUiOnOff == True:
+            self.total_reward = 0
+            self.rewards_count = 0
         for s in self.FlyScatters:
             s.change_emulation()
             s.mode = self.modespinner.text
@@ -134,7 +138,9 @@ class MainApp(App):
             Clock.schedule_interval(self._update_clock, 1 / 4.)
             self.total_reward = 0
             self.reset_reward_graph()
-        else: print('- adapt ui stopped -')
+        else:
+            Clock.unschedule(self._update_clock)
+            print('- adapt ui stopped -')
 
     def stop_emulation_async(self,Text='Stop emulation!', Header='Adapt', par=0):
         # if self.modespinner.text == 'MARL adapt': self.total_reward += int(par)
@@ -147,8 +153,9 @@ class MainApp(App):
 
     def _update_clock(self, dt):
         reward = self.total_reward
-        if self.reward_graph.ymax < reward: self.reward_graph.ymax = reward
-        elif self.reward_graph.ymin > reward: self.reward_graph.ymin = reward
+        #reward = self.total_reward / self.rewards_count
+        if self.reward_graph.ymax < reward: self.reward_graph.ymax = reward*1.1
+        elif self.reward_graph.ymin > reward: self.reward_graph.ymin = reward*1.1
         if abs(reward) > self.reward_graph.y_ticks_major * 10: self.reward_graph.y_ticks_major *= 2
         if self.reward_graph.xmax > self.reward_graph.x_ticks_major * 5: self.reward_graph.x_ticks_major *= 4
         if self.reward_graph.xmax > 1: self.reward_graph.xmin = 1
@@ -162,13 +169,13 @@ class MainApp(App):
         self.reward_plot = LinePlot(line_width=2, color=[1, 0, 0, 1])
         self.reward_graph.add_plot(self.reward_plot)
         self.reward_points = []
-        self.reward_graph.x_ticks_major = 5; self.reward_graph.y_ticks_major = 5
+        self.reward_graph.x_ticks_major = 1; self.reward_graph.y_ticks_major = 1
         self.reward_graph.xmin = 0; self.reward_graph.xmax = 1; self.reward_graph.ymin = 0; self.reward_graph.ymax = 1
 
     def target_ui_selected_value(self, spinner, text):
         self.target_ui_vect = Widgets.target_ui(text)
         print(self.target_ui_vect[1][1])
-        self.lblTargetUiVect.text = str(self.target_ui_vect).replace(' ','')
+        self.lblTargetUiVect.text = str(self.target_ui_vect).replace(' ','')[:120]
 
     def colrowspinner_selected_value(self, spinner, text):
         self.mainscreen_rebuild_btn_click(self)
@@ -184,7 +191,7 @@ class MainApp(App):
         for i in range(rows):
             hor = BoxLayout(orientation='horizontal', padding=10, spacing=10, )
             for j in range(cols):#random.randint(1, 5)):
-                s = FlyScatterV3(do_rotation=True, do_scale=True, auto_bring_to_front=True)
+                s = FlyScatterV3(do_rotation=True, do_scale=True, auto_bring_to_front=False, do_collide_after_children=False)
                 s.app = self
                 s.env = agent.Environment(int(self.episodespinner.text), self)
                 s.agent = agent.Agent()

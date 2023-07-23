@@ -23,18 +23,20 @@ class Environment:
         tuv = self.app.target_ui_vect[cuv[0]-1] # 0 - self.nx, 1 - self.ny, 2 - self.ns, 3 - self.nr
         R1 = 1 - abs(tuv[0] - cuv[2])  # nx, position X
         R2 = 1 - abs(tuv[1] - cuv[3])  # ny, position Y
-        R3 = 1 - abs(tuv[2] - cuv[4])/10  # ns, scale
+        R3 = 1 - abs(tuv[2] - cuv[4])  # ns, scale
         R4 = 1 - abs(tuv[3] - cuv[5])  # ny, rotate
         R5 = cuv[1] / 10. if cuv[1]<=10 else 1  # taps
-        R0 = [R1, R2, R3, R4, R5] # if cuv[1]>0: print(R0,':',cuv,tuv)
-        return R0
+        R0 = [R1, R2, R3, R4]
+        # if cuv[1]>0: print(R0,':',cuv,tuv)
+        return R0, R5
 
     def action(self, action):
         self.steps_left -= 1 # if self.is_done(): raise Exception("Game is over")
-        rewards = self.get_rewards()
-        rewards.sort()  #reverse=True)
-        sra = sum(rewards)/len(rewards)
-        return sra
+        r_pos, r_taps = self.get_rewards()
+        #rewards.sort()  #reverse=True)
+        #return sum(rewards)/100
+        #return min(rewards[:3])
+        return sum(r_pos) / len(r_pos)  + r_taps
         #return random.choice(rewards)
         #return random.random()-0.5
         #return random.choice(self.get_rewards())
