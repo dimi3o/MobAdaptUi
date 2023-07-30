@@ -36,7 +36,8 @@ class Environment:
         #rewards.sort()  #reverse=True)
         #return sum(rewards)/100
         #return min(rewards[:3])
-        return sum(r_pos) / len(r_pos)  + r_taps
+        #return sum(r_pos) / len(r_pos)  + r_taps
+        return sum(r_pos) / len(r_pos)
         #return random.choice(rewards)
         #return random.random()-0.5
         #return random.choice(self.get_rewards())

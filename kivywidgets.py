@@ -24,7 +24,7 @@ widgets = ['Image','TextInput','Label','Button','CheckBox','Slider','Switch','Sp
 class Widgets(object):
     @staticmethod
     def get_random_widget(name=''):
-        ret = random.choice(widgets) if (name is '') else name
+        ret = random.choice(widgets) if (name == '') else name
         if ret == 'Image': return Image(source='data/icons/bug1.png', allow_stretch=True, keep_ratio=True)
         elif ret == 'TextInput': return TextInput(text='textinput')
         elif ret == 'Label': return Label(text='label', color=random.choice(allcolors))
@@ -40,12 +40,12 @@ class Widgets(object):
 
     @staticmethod
     def get_app_icon(id=''):
-        id = random.randint(1,41) if (id is '') else id
+        id = random.randint(1,41) if (id == '') else id
         return Image(source="data/icons/apps/a"+str(id)+".png", allow_stretch=True, keep_ratio=True)
 
     @staticmethod
     def get_food_icon(id=''):
-        id = random.randint(1, 41) if (id is '') else id
+        id = random.randint(1, 41) if (id == '') else id
         return Image(source="data/icons/foods/f" + str(id) + ".png", allow_stretch=True, keep_ratio=True)
 
     @staticmethod
