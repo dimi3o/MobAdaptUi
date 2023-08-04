@@ -14,6 +14,7 @@ from kivy.uix.slider import Slider
 from kivy.uix.checkbox import CheckBox
 from kivy.uix.scatter import Scatter
 from kivy.uix.screenmanager import ScreenManager, Screen
+from kivy.uix.tabbedpanel import TabbedPanel, TabbedPanelHeader
 from kivy.uix.boxlayout import BoxLayout
 from kivy.graphics import Color, Rectangle
 from kivy.clock import Clock
@@ -84,17 +85,29 @@ class MainApp(App):
 
         # SETTINGS SCREEN
         self.root1 = BoxLayout(orientation='vertical', padding=10)
-        self.lblTargetUiVect = Label(text='[]', color=(0, 0, 0, 1), text_size=(None, 30), halign='left')
-        self.root1.add_widget(self.lblTargetUiVect)
+        self.root2 = BoxLayout(orientation='vertical', padding=10)
+        self.root3 = BoxLayout(orientation='vertical', padding=10)
+
+        self.lblTargetUiVect = Label(text='[]', text_size=(None, 30), halign='left')
+        self.root3.add_widget(self.lblTargetUiVect)
         self.kitchenspinner = Spinner(text=self.kitchen[0], values=self.kitchen, background_color=(0.027, 0.954, 0.061, 1))
         self.kitchenspinner.bind(text=self.target_ui_selected_value)
-        self.root1.add_widget(self.init_hor_boxlayout([Label(text='Kitchen:', color=(0, 0, 1, 1)),self.kitchenspinner]))
-        self.root1.add_widget(Label(text='TOTAL REWARD', color=[1, 0, 0, 1]))
+        self.root3.add_widget(self.init_hor_boxlayout([Label(text='Kitchen:', color=(0, 0, 1, 1)),self.kitchenspinner]))
+        self.root2.add_widget(Label(text='TOTAL REWARD'))
         self.reward_graph = Widgets.get_graph_widget(1, 1, 0, 1, 0, 1, 'Time, [sec]')
         self.graph_layout = BoxLayout(orientation='horizontal', size_hint_y=None, height=Window.height*3/4)
         self.graph_layout.add_widget(self.reward_graph)
-        self.root1.add_widget(self.graph_layout)
-        #self.root1.add_widget(self.reward_graph)
+        self.root2.add_widget(self.graph_layout)
+
+        tp = TabbedPanel(do_default_tab=False)
+        reward_th = TabbedPanelHeader(text='Reward Graph')
+        tp.add_widget(reward_th)
+        reward_th.content = self.root2
+        uivect_th = TabbedPanelHeader(text='UI Vect')
+        tp.add_widget(uivect_th)
+        uivect_th.content = self.root3
+        self.root1.add_widget(tp)
+
         btn2 = Button(text='MAIN SCREEN', size_hint_y=None, height='30dp', background_color=(0.2, 0.2, 0.2, 1),
                       on_press=lambda null: self.to_screen('mainscreen', 'right'))
         self.root1.add_widget(btn2)
