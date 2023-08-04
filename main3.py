@@ -71,8 +71,9 @@ class MainApp(App):
         self.modespinner = Spinner(text="MARL adapt", values=self.modes, background_color=(0.127,0.854,0.561,1))
         self.adapt_btn = Button(text='ADAPT UI', size_hint_y=None, height='30dp', background_color=(1, 0, 0, 1), on_press=self.adapt_ui) #on_press=lambda null: self.show_popup('MARLMUI starting... '+self.modespinner.text, 'Info'))
         lbl = Label(text='Adaptation:', color=(0, 0, 1, 1)) #, size_hint_x=None, width='150dp')
-        btn1 = Button(text='SETTINGS', size_hint_y=None, height='30dp', background_color=(0.2, 0.2, 0.2, 1), on_press=lambda null: self.to_screen('settings', 'left'))
-        self.footpanel = self.init_hor_boxlayout([lbl,self.modespinner, self.episodespinner, self.adapt_btn, btn1])
+        quit_btn = Button(text='QUIT', size_hint_y=None, height='30dp', background_color=(0.9, 0.9, 0.9, 1), on_press=lambda null: self.get_running_app().stop())
+        sett_btn = Button(text='SETTINGS', size_hint_y=None, height='30dp', background_color=(0.2, 0.2, 0.2, 1), on_press=lambda null: self.to_screen('settings', 'left'))
+        self.footpanel = self.init_hor_boxlayout([quit_btn, self.modespinner, self.episodespinner, self.adapt_btn, sett_btn])
         self.root.add_widget(self.footpanel)
         self.footpanel.bind(size=self._update_rect_footpanel, pos=self._update_rect_footpanel)
         with self.footpanel.canvas.before:
