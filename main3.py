@@ -31,7 +31,8 @@ class MainApp(App):
     y_discount = 0.99
     total_reward = 0
     rewards_count = 0
-    target_ui_vect = []
+    target_ui_vect = [[0. for j in range(4)] for i in range(40)]
+    current_ui_vect = [[0. for j in range(4)] for i in range(40)]
 
     def __init__(self, **kwargs):
         super(MainApp, self).__init__(**kwargs)
@@ -43,7 +44,12 @@ class MainApp(App):
         self.kitchen = ('rus', 'eur', 'asia')
         self.episodes = ('20', '200', '2000', '20000')
 
+    def on_resize_my(self, oldsize, newsize):
+        self.reward_graph.height = self.graph_layout.height = Window.height * 5 / 7
+
     def build(self):
+        Window.bind(size=self.on_resize_my)
+
         # MAIN SCREEN
         self.root = BoxLayout(orientation='vertical', padding=10)  # ,size_hint_y=None)
 
@@ -57,7 +63,6 @@ class MainApp(App):
         self.headpanel = self.init_hor_boxlayout([lbl, self.colrowspinner, self.objectspinner, btn])
         self.root.add_widget(self.headpanel)
         self.headpanel.bind(size=self._update_rect_headpanel, pos=self._update_rect_headpanel)
-
         with self.headpanel.canvas.before:
             Color(0.827, 0.827, 0.827, 1.)
             self.rect_headpanel = Rectangle()
@@ -85,21 +90,22 @@ class MainApp(App):
 
         # SETTINGS SCREEN
         self.root1 = BoxLayout(orientation='vertical', padding=10)
-        self.root2 = BoxLayout(orientation='vertical', padding=10)
-        self.root3 = BoxLayout(orientation='vertical', padding=10)
+        self.root2 = BoxLayout(orientation='vertical', padding=10) #reward graph tab
+        self.root3 = BoxLayout(orientation='vertical', padding=10) #ui vect tab
 
-        self.lblTargetUiVect = Label(text='[]', text_size=(None, 30), halign='left')
+        self.lblTargetUiVect = Label(text='[]', text_size=(None, 30), halign='left', color=(0, 0, 0, 1))
         self.root3.add_widget(self.lblTargetUiVect)
         self.kitchenspinner = Spinner(text=self.kitchen[0], values=self.kitchen, background_color=(0.027, 0.954, 0.061, 1))
         self.kitchenspinner.bind(text=self.target_ui_selected_value)
         self.root3.add_widget(self.init_hor_boxlayout([Label(text='Kitchen:', color=(0, 0, 1, 1)),self.kitchenspinner]))
-        self.root2.add_widget(Label(text='TOTAL REWARD'))
-        self.reward_graph = Widgets.get_graph_widget(1, 1, 0, 1, 0, 1, 'Time, [sec]')
-        self.graph_layout = BoxLayout(orientation='horizontal', size_hint_y=None, height=Window.height*3/4)
+        self.root2.add_widget(Label(text='TOTAL REWARD', color=(0, 0, 0, 1)))
+        self.reward_graph = Widgets.get_graph_widget(1, 1, 0, 1, 0, 1, 'Time, [sec]', WhiteBackColor)
+        self.graph_layout = BoxLayout(orientation='horizontal', size_hint_y=None)
+        self.reward_graph.height = self.graph_layout.height = Window.height*5/7
         self.graph_layout.add_widget(self.reward_graph)
         self.root2.add_widget(self.graph_layout)
 
-        tp = TabbedPanel(do_default_tab=False)
+        tp = TabbedPanel(do_default_tab=False, background_color=(0,0,0,0))
         reward_th = TabbedPanelHeader(text='Reward Graph')
         tp.add_widget(reward_th)
         reward_th.content = self.root2
@@ -130,6 +136,7 @@ class MainApp(App):
     def to_screen(self, namescreen='mainscreen', direction='right'):
         self.sm.transition.direction = direction
         self.sm.current = namescreen
+        if namescreen == 'settings': print(self.current_ui_vect)
 
     def adapt_ui(self, instance):
         m = self.modespinner.text
@@ -185,6 +192,9 @@ class MainApp(App):
         self.reward_points = []
         self.reward_graph.x_ticks_major = 1; self.reward_graph.y_ticks_major = 1
         self.reward_graph.xmin = 0; self.reward_graph.xmax = 1; self.reward_graph.ymin = 0; self.reward_graph.ymax = 1
+
+    def do_current_ui_vect(self, vect):
+        self.current_ui_vect[vect[0]-1] = [vect[2], vect[3], vect[4], vect[5]]
 
     def target_ui_selected_value(self, spinner, text):
         self.target_ui_vect = Widgets.target_ui(text)
@@ -252,5 +262,8 @@ class MainApp(App):
         popup.open()
 
 if __name__ == "__main__":
+    # Window.minimum_height = 800
+    # Window.minimum_width = 300
+    # Window.on_resize(300, 800)
     app = MainApp()
     app.run()
