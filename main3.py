@@ -99,7 +99,7 @@ class MainApp(App):
         self.kitchenspinner.bind(text=self.target_ui_selected_value)
         self.root3.add_widget(self.init_hor_boxlayout([Label(text='Kitchen:', color=(0, 0, 1, 1)),self.kitchenspinner]))
         self.root2.add_widget(Label(text='TOTAL REWARD', color=(0, 0, 0, 1)))
-        self.reward_graph = Widgets.get_graph_widget(1, 1, 0, 1, 0, 1, 'Time, [sec]', WhiteBackColor)
+        self.reward_graph = Widgets.get_graph_widget(.5, .5, 0, .1, 0, .1, 'Time, [sec]', WhiteBackColor)
         self.graph_layout = BoxLayout(orientation='horizontal', size_hint_y=None)
         self.reward_graph.height = self.graph_layout.height = Window.height*5/7
         self.graph_layout.add_widget(self.reward_graph)
@@ -177,9 +177,9 @@ class MainApp(App):
         #reward = self.total_reward / self.rewards_count
         if self.reward_graph.ymax < reward: self.reward_graph.ymax = reward*1.1
         elif self.reward_graph.ymin > reward: self.reward_graph.ymin = reward*1.1
-        if abs(reward) > self.reward_graph.y_ticks_major * 10: self.reward_graph.y_ticks_major *= 2
-        if self.reward_graph.xmax > self.reward_graph.x_ticks_major * 5: self.reward_graph.x_ticks_major *= 4
-        if self.reward_graph.xmax > 1: self.reward_graph.xmin = 1
+        if abs(reward) > self.reward_graph.y_ticks_major * 20: self.reward_graph.y_ticks_major *= 4
+        if self.reward_graph.xmax > self.reward_graph.x_ticks_major * 20: self.reward_graph.x_ticks_major *= 2
+        # if self.reward_graph.xmax > 1: self.reward_graph.xmin = 1
         self.reward_points.append((self.reward_graph.xmax, reward))
         self.reward_plot.points = [(x, y) for x, y in self.reward_points]
         self.reward_graph.xmax += 1
@@ -190,8 +190,8 @@ class MainApp(App):
         self.reward_plot = LinePlot(line_width=2, color=[1, 0, 0, 1])
         self.reward_graph.add_plot(self.reward_plot)
         self.reward_points = []
-        self.reward_graph.x_ticks_major = 1; self.reward_graph.y_ticks_major = 1
-        self.reward_graph.xmin = 0; self.reward_graph.xmax = 1; self.reward_graph.ymin = 0; self.reward_graph.ymax = 1
+        self.reward_graph.x_ticks_major = .5; self.reward_graph.y_ticks_major = .1
+        self.reward_graph.xmin = 0; self.reward_graph.xmax = .1; self.reward_graph.ymin = 0; self.reward_graph.ymax = .1
 
     def do_current_ui_vect(self, vect):
         self.current_ui_vect[vect[0]-1] = [vect[2], vect[3], vect[4], vect[5]]
