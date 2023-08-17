@@ -156,7 +156,7 @@ class MainApp(App):
                 s.env.steps_left = int(self.episodespinner.text)
             self.adapt_btn.background_color = (0.127,0.854,0.561,1) if s.emulation else (1, 0, 0, 1)
         if self.AdaptUiOnOff:
-            Clock.schedule_interval(self._update_clock, 1 / 4.)
+            Clock.schedule_interval(self._update_clock, 1 / 8.)
             self.total_reward = 0
             self.reset_reward_graph()
         else:
@@ -179,7 +179,7 @@ class MainApp(App):
         elif self.reward_graph.ymin > reward: self.reward_graph.ymin = reward*1.1
         if abs(reward) > self.reward_graph.y_ticks_major * 20: self.reward_graph.y_ticks_major *= 4
         if self.reward_graph.xmax > self.reward_graph.x_ticks_major * 20: self.reward_graph.x_ticks_major *= 2
-        # if self.reward_graph.xmax > 1: self.reward_graph.xmin = 1
+        #if self.reward_graph.ymin == 0 and reward > 0: self.reward_graph.ymin = reward*0.93
         self.reward_points.append((self.reward_graph.xmax, reward))
         self.reward_plot.points = [(x, y) for x, y in self.reward_points]
         self.reward_graph.xmax += 1
