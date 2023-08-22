@@ -175,14 +175,14 @@ class MainApp(App):
     def _update_clock(self, dt):
         reward = self.total_reward
         #reward = self.total_reward / self.rewards_count
-        if self.reward_graph.ymax < reward: self.reward_graph.ymax = reward*1.1
-        elif self.reward_graph.ymin > reward: self.reward_graph.ymin = reward*1.1
+        if self.reward_graph.ymax < reward: self.reward_graph.ymax = reward*1.2
+        elif self.reward_graph.ymin > reward: self.reward_graph.ymin = reward*0.9
         if abs(reward) > self.reward_graph.y_ticks_major * 20: self.reward_graph.y_ticks_major *= 4
         if self.reward_graph.xmax > self.reward_graph.x_ticks_major * 20: self.reward_graph.x_ticks_major *= 2
         #if self.reward_graph.ymin == 0 and reward > 0: self.reward_graph.ymin = reward*0.93
         self.reward_points.append((self.reward_graph.xmax, reward))
         self.reward_plot.points = [(x, y) for x, y in self.reward_points]
-        self.reward_graph.xmax += 1
+        self.reward_graph.xmax += 1 / 8.
 
     def reset_reward_graph(self):
         try: self.reward_graph.remove_plot(self.reward_plot)
