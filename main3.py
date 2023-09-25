@@ -1,6 +1,7 @@
 import random
-
 import agent
+from dqnvianumpy.q_learning import train_main
+from dqnvianumpy.q_learning import test_main
 from colors import MyColors
 from kivywidgets import Widgets, FlyScatter, FlyScatterV3
 from kivy.app import App
@@ -16,6 +17,7 @@ from kivy.uix.scatter import Scatter
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.uix.tabbedpanel import TabbedPanel, TabbedPanelHeader
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.textinput import TextInput
 from kivy.graphics import Color, Rectangle
 from kivy.clock import Clock
 from kivy_garden.graph import LinePlot
@@ -43,6 +45,8 @@ class MainApp(App):
         self.objects = ('Apps', 'Foods', 'Widgets')
         self.kitchen = ('rus', 'eur', 'asia')
         self.episodes = ('20', '200', '2000', '20000')
+        self.modeargs = ('train', 'test')
+        self.r_modeargs = ('map', 'weights', 'stats')
 
     def on_resize_my(self, oldsize, newsize):
         self.reward_graph.height = self.graph_layout.height = Window.height * 5 / 7
@@ -92,6 +96,7 @@ class MainApp(App):
         self.root1 = BoxLayout(orientation='vertical', padding=10)
         self.root2 = BoxLayout(orientation='vertical', padding=10) #reward graph tab
         self.root3 = BoxLayout(orientation='vertical', padding=10) #ui vect tab
+        self.root4 = BoxLayout(orientation='vertical', padding=10) #dqn test
 
         self.lblTargetUiVect = Label(text='[]', text_size=(None, 30), halign='left', color=(0, 0, 0, 1))
         self.root3.add_widget(self.lblTargetUiVect)
@@ -104,6 +109,12 @@ class MainApp(App):
         self.reward_graph.height = self.graph_layout.height = Window.height*5/7
         self.graph_layout.add_widget(self.reward_graph)
         self.root2.add_widget(self.graph_layout)
+        self.console = TextInput(password=False, multiline=True, readonly=True)
+        self.root4.add_widget(self.console)
+        self.dqnmodespinner = Spinner(text=self.modeargs[0], values=self.modeargs, background_color=(0.027, 0.954, 0.061, 1))
+        self.dqnr_modespinner = Spinner(text=self.r_modeargs[0], values=self.r_modeargs, background_color=(0.027, 0.125, 0.061, 1))
+        self.test_dqn_btn = Button(text='TEST', size_hint_y=None, height='30dp', background_color=(1, 0, 0, 1), on_press=self.test_dqn)
+        self.root4.add_widget(self.init_hor_boxlayout([Label(text='Mode:', color=(1, 0, 1, 1)), self.dqnmodespinner, self.dqnr_modespinner, self.test_dqn_btn]))
 
         tp = TabbedPanel(do_default_tab=False, background_color=(0,0,0,0))
         reward_th = TabbedPanelHeader(text='Reward Graph')
@@ -112,6 +123,9 @@ class MainApp(App):
         uivect_th = TabbedPanelHeader(text='UI Vect')
         tp.add_widget(uivect_th)
         uivect_th.content = self.root3
+        dqnvect_th = TabbedPanelHeader(text='DQN test')
+        tp.add_widget(dqnvect_th)
+        dqnvect_th.content = self.root4
         self.root1.add_widget(tp)
 
         btn2 = Button(text='MAIN SCREEN', size_hint_y=None, height='30dp', background_color=(0.2, 0.2, 0.2, 1),
@@ -127,6 +141,22 @@ class MainApp(App):
                 self.rect = Rectangle(size=self.root.size, pos=self.sm.pos)
 
         return self.sm
+
+    def test_dqn(self, instance):
+        #self.cclear()
+        if self.dqnmodespinner.text == "train":
+            train_main(self.dqnr_modespinner.text, self)
+        else:
+            test_main('model.pkl', self)
+
+    def cwriteline(self, string = ''):
+        self.console.text += '\n'+string
+
+    def cwrite(self, string = ''):
+        self.console.text += string
+
+    def cclear(self, string=''):
+            self.console.text = ''
 
     def add_screen(self, name, widget):
         scr = Screen(name=name)
