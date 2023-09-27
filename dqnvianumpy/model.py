@@ -1,24 +1,20 @@
 import pickle
 import numpy as np
 
+
 def linear(x, derivation=False):
-    """
-    activation function linear
-    """
-    if derivation:
-        return 1
-    else:
-        return x
+    """ activation function linear """
+    return 1 if derivation else x
 
 
 def relu(x, derivation=False):
-    """
-    activation function relu
-    """
-    if derivation:
-        return 1.0 * (x > 0)
-    else:
-        return np.maximum(x, 0)
+    """ activation function relu """
+    return 1.0 * (x > 0) if derivation else np.maximum(x, 0)
+
+
+def step_function(x):
+    """ activation step function """
+    return 1 if x >= 0 else 0
 
 
 class neural_network():
@@ -26,7 +22,7 @@ class neural_network():
         self.l1_weights = np.random.normal(scale=0.1, size=(hidden_neurons, hidden_neurons))
         self.l1_biases = np.zeros(hidden_neurons)
 
-        self.l2_weights =  np.random.normal(scale=0.1, size=(hidden_neurons, output_shape))
+        self.l2_weights = np.random.normal(scale=0.1, size=(hidden_neurons, output_shape))
         self.l2_biases = np.zeros(output_shape)
 
         self.learning_rate = learning_rate
@@ -36,49 +32,48 @@ class neural_network():
         method implements backpropagation
         """
         for _ in range(epochs):
-        #Forward propagation
-            #First layer
+            # Forward propagation
+            # First layer
             u1 = np.dot(x, self.l1_weights) + self.l1_biases
             l1o = relu(u1)
 
-            #Second layer
+            # Second layer
             u2 = np.dot(l1o, self.l2_weights) + self.l2_biases
             l2o = linear(u2)
 
-        #Backward Propagation
-            #Second layer
+            # Backward Propagation
+            # Second layer
             d_l2o = l2o - y
             d_u2 = linear(u2, derivation=True)
 
             g_l2 = np.dot(l1o.T, d_u2 * d_l2o)
             d_l2b = d_l2o * d_u2
-            #First layer
-            d_l1o = np.dot(d_l2o , self.l2_weights.T)
+            # First layer
+            d_l1o = np.dot(d_l2o, self.l2_weights.T)
             d_u1 = relu(u1, derivation=True)
 
             g_l1 = np.dot(x.T, d_u1 * d_l1o)
             d_l1b = d_l1o * d_u1
 
-        #Update weights and biases
+            # Update weights and biases
             self.l1_weights -= self.learning_rate * g_l1
             self.l1_biases -= self.learning_rate * d_l1b.sum(axis=0)
 
             self.l2_weights -= self.learning_rate * g_l2
             self.l2_biases -= self.learning_rate * d_l2b.sum(axis=0)
 
-        #Return actual loss
-        return np.mean(np.subtract(y, l2o)**2)
-
+        # Return actual loss
+        return np.mean(np.subtract(y, l2o) ** 2)
 
     def predict(self, x):
         """
         method predicts q-values for state x
         """
-        #First layer
+        # First layer
         u1 = np.dot(x, self.l1_weights) + self.l1_biases
         l1o = relu(u1)
 
-        #Second layer
+        # Second layer
         u2 = np.dot(l1o, self.l2_weights) + self.l2_biases
         l2o = linear(u2)
 
@@ -88,7 +83,7 @@ class neural_network():
         """
         method saves model
         """
-        with open("{}.pkl" .format(name), "wb") as model:
+        with open("{}.pkl".format(name), "wb") as model:
             pickle.dump(self, model, pickle.HIGHEST_PROTOCOL)
 
     def load_model(self, name):
@@ -101,7 +96,7 @@ class neural_network():
         self.l1_weights = tmp_model.l1_weights
         self.l1_biases = tmp_model.l1_biases
 
-        self.l2_weights =  tmp_model.l2_weights
+        self.l2_weights = tmp_model.l2_weights
         self.l2_biases = tmp_model.l2_biases
 
         self.learning_rate = tmp_model.learning_rate
