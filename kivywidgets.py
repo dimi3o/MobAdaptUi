@@ -211,6 +211,19 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
         #     self.children[0].height //= 2
         #     self.doublesize = False
 
+class AsyncConsoleScatter(Scatter):
+    console = None
+
+    def __init__(self, **kwargs):
+        super(AsyncConsoleScatter, self).__init__(**kwargs)
+
+    def start_emulation(self, console_widget):
+        self.console = console_widget
+        Clock.schedule_interval(self.update_console, 1. / 2.)
+
+    def update_console(self, *args):
+        self.console.text += '.'
+
 KV = """
 <FlatButton>:
     ripple_color: 0, 0, 0, 0

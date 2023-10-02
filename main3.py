@@ -3,7 +3,7 @@ import agent
 from dqnvianumpy.q_learning import train_main
 from dqnvianumpy.q_learning import test_main
 from colors import MyColors
-from kivywidgets import Widgets, FlyScatter, FlyScatterV3
+from kivywidgets import Widgets, FlyScatter, FlyScatterV3, AsyncConsoleScatter
 from kivy.app import App
 from kivy.properties import NumericProperty
 from kivy.uix.label import Label
@@ -23,7 +23,7 @@ from kivy.clock import Clock
 from kivy_garden.graph import LinePlot
 
 WhiteBackColor = True
-__version__ = '0.0.3.1'
+__version__ = '0.0.3.2'
 
 class MainApp(App):
     sm = ScreenManager()
@@ -115,6 +115,8 @@ class MainApp(App):
         self.dqnr_modespinner = Spinner(text=self.r_modeargs[0], values=self.r_modeargs, background_color=(0.027, 0.125, 0.061, 1))
         self.test_dqn_btn = Button(text='TEST', size_hint_y=None, height='30dp', background_color=(1, 0, 0, 1), on_press=self.test_dqn)
         self.root4.add_widget(self.init_hor_boxlayout([Label(text='Mode:', color=(1, 0, 1, 1)), self.dqnmodespinner, self.dqnr_modespinner, self.test_dqn_btn]))
+        self.AsyncConsoleScatter = AsyncConsoleScatter()
+        self.AsyncConsoleScatter.start_emulation(self.console)
 
         tp = TabbedPanel(do_default_tab=False, background_color=(0,0,0,0))
         reward_th = TabbedPanelHeader(text='Reward Graph')
@@ -142,6 +144,8 @@ class MainApp(App):
 
         return self.sm
 
+    # Need Asynchronous app
+    # https://kivy.org/doc/stable/api-kivy.app.html#module-kivy.app
     def test_dqn(self, instance):
         #self.cclear()
         if self.dqnmodespinner.text == "train":
@@ -155,7 +159,7 @@ class MainApp(App):
     def cwrite(self, string = ''):
         self.console.text += string
 
-    def cclear(self, string=''):
+    def cclear(self):
             self.console.text = ''
 
     def add_screen(self, name, widget):
