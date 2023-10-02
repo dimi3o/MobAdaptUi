@@ -115,8 +115,8 @@ class MainApp(App):
         self.dqnr_modespinner = Spinner(text=self.r_modeargs[0], values=self.r_modeargs, background_color=(0.027, 0.125, 0.061, 1))
         self.test_dqn_btn = Button(text='TEST', size_hint_y=None, height='30dp', background_color=(1, 0, 0, 1), on_press=self.test_dqn)
         self.root4.add_widget(self.init_hor_boxlayout([Label(text='Mode:', color=(1, 0, 1, 1)), self.dqnmodespinner, self.dqnr_modespinner, self.test_dqn_btn]))
-        self.AsyncConsoleScatter = AsyncConsoleScatter()
-        self.AsyncConsoleScatter.start_emulation(self.console)
+        # self.AsyncConsoleScatter = AsyncConsoleScatter()
+        # self.AsyncConsoleScatter.start_emulation(self.console)
 
         tp = TabbedPanel(do_default_tab=False, background_color=(0,0,0,0))
         reward_th = TabbedPanelHeader(text='Reward Graph')
