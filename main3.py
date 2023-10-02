@@ -98,8 +98,8 @@ class MainApp(App):
         self.root3 = BoxLayout(orientation='vertical', padding=10) #ui vect tab
         self.root4 = BoxLayout(orientation='vertical', padding=10) #dqn test
 
-        self.lblTargetUiVect = Label(text='[]', text_size=(None, 30), halign='left', color=(0, 0, 0, 1))
-        self.root3.add_widget(self.lblTargetUiVect)
+        self.targetUiVect = TextInput(password=False, multiline=True, readonly=True)
+        self.root3.add_widget(self.targetUiVect)
         self.kitchenspinner = Spinner(text=self.kitchen[0], values=self.kitchen, background_color=(0.027, 0.954, 0.061, 1))
         self.kitchenspinner.bind(text=self.target_ui_selected_value)
         self.root3.add_widget(self.init_hor_boxlayout([Label(text='Kitchen:', color=(0, 0, 1, 1)),self.kitchenspinner]))
@@ -233,7 +233,7 @@ class MainApp(App):
     def target_ui_selected_value(self, spinner, text):
         self.target_ui_vect = Widgets.target_ui(text)
         print(self.target_ui_vect[1][1])
-        self.lblTargetUiVect.text = str(self.target_ui_vect).replace(' ','')[:120]
+        self.targetUiVect.text = str(self.target_ui_vect).replace(' ','')
 
     def colrowspinner_selected_value(self, spinner, text):
         self.mainscreen_rebuild_btn_click(self)
