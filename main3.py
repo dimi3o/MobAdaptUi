@@ -248,6 +248,8 @@ class MainApp(App):
         cols = int(TextSize[2])
         random.shuffle(self.IdsPngs)
 
+        print('W =', Window.width, ',w =', Window.width // cols, ',H =', Window.height, ',h =', Window.height // (rows + 1))
+
         for i in range(rows):
             hor = BoxLayout(orientation='horizontal', padding=0, spacing=0)
             for j in range(cols):

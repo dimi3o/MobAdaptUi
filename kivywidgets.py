@@ -37,7 +37,7 @@ class Widgets(object):
         elif ret == 'ProgressBar': return ProgressBar(max=1000, value=750)
         elif ret == 'FlyLabel': return FlyLabel()
         elif ret == 'FlatButton': return FlatButton().build()
-        elif ret == 'LineRectangle': return LineRectangle(line_width=2, line_rect=[params[0], params[1], params[2], params[3]], line_color=[1,0,0,1], label_text=params[4], label_pos=[params[2]*3//5, 0])
+        elif ret == 'LineRectangle': return LineRectangle(line_width=2, line_rect=[params[0], params[1], params[2], params[3]], line_color=[1,0,0,1], label_text=params[4], label_pos=[params[2]//3, 0])
         return ''
 
     @staticmethod
