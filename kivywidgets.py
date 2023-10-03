@@ -2,6 +2,7 @@ import random
 import math as m
 from kivy.metrics import dp
 from kivy.lang import Builder
+from kivy.uix.widget import Widget
 from kivy.uix.label import Label
 from kivy.uix.button import Button
 from kivy.uix.image import Image
@@ -13,7 +14,7 @@ from kivy.uix.spinner import Spinner
 from kivy.uix.progressbar import ProgressBar
 from kivy.uix.behaviors import TouchRippleBehavior
 from kivy.uix.scatter import Scatter
-from kivy.properties import ListProperty, BooleanProperty
+from kivy.properties import ListProperty, BooleanProperty, NumericProperty, StringProperty
 from kivy.core.window import Window
 from kivy.clock import Clock
 from kivy_garden.graph import Graph, LinePlot
@@ -23,7 +24,7 @@ widgets = ['Image','TextInput','Label','Button','CheckBox','Slider','Switch','Sp
 
 class Widgets(object):
     @staticmethod
-    def get_random_widget(name=''):
+    def get_random_widget(name='', params=[]):
         ret = random.choice(widgets) if (name == '') else name
         if ret == 'Image': return Image(source='data/icons/bug1.png', allow_stretch=True, keep_ratio=True)
         elif ret == 'TextInput': return TextInput(text='textinput')
@@ -36,6 +37,7 @@ class Widgets(object):
         elif ret == 'ProgressBar': return ProgressBar(max=1000, value=750)
         elif ret == 'FlyLabel': return FlyLabel()
         elif ret == 'FlatButton': return FlatButton().build()
+        elif ret == 'LineRectangle': return LineRectangle(line_width=2, line_rect=[params[0], params[1], params[2], params[3]], line_color=[1,0,0,1], label_text=params[4], label_pos=[params[2]*3//5, 0])
         return ''
 
     @staticmethod
@@ -93,6 +95,7 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
     agent = None
     env = None
     id = None
+    grid_rect = None
     raw_height = 0
     raw_width = 0
     raw_rotate = 0
@@ -327,3 +330,51 @@ class FlyScatter(TouchRippleBehavior, Scatter):
         else:
             Clock.unschedule(self.update_pos)
             self.emulation = False
+
+# Builder.load_string('''
+# <LineRectangle>:
+#     canvas:
+#         Color:
+#             rgba: .1, .1, 1, .9
+#         Line:
+#             width: 2.
+#             rectangle: (self.x, self.y, self.width, self.height)
+#     Label:
+#         center: root.center
+#         text: 'Rectangle'
+# ''')
+#
+# class LineRectangle(Widget):
+#     pass
+
+Builder.load_string('''
+<LineRectangle>:
+    canvas:
+        Color:
+            rgba: root.line_color
+        Line:
+            width: root.line_width
+            rectangle: root.line_rect
+    Label:
+        text: root.label_text
+        pos: root.label_pos
+        color: root.line_color
+''')
+
+class LineRectangle(Widget):
+    line_color = ListProperty([])
+    line_rect = ListProperty([])
+    line_width = NumericProperty()
+    label_text = StringProperty('')
+    label_pos = ListProperty([])
+
+    def __init__(self, **kwargs):
+        self.line_color = kwargs.pop('line_color', [.1, .1, 1, .9])
+        self.line_rect = kwargs.pop('line_rect', [0, 0, 50, 50])
+        self.line_width = kwargs.pop('line_width', 1)
+        self.label_text = kwargs.pop('label_text', 'Rectangle')
+        self.label_pos = kwargs.pop('label_pos', [0, 0])
+        super(LineRectangle, self).__init__()
+#
+# self.bbox1 = LineRectangle(line_wdth=2, line_rect=[100, 100, 100, 100], line_color=[1,0,0,1], label_text='bbox1', label_pos=[100, 100])
+

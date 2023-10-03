@@ -64,7 +64,8 @@ class MainApp(App):
         self.objectspinner.bind(text=self.colrowspinner_selected_value)
         lbl = Label(text='Size/Objs:', color=(0, 0, 1, 1))
         btn = Button(text='rebuild', size_hint_y=None, height='30dp', on_press=self.mainscreen_rebuild_btn_click)
-        self.headpanel = self.init_hor_boxlayout([lbl, self.colrowspinner, self.objectspinner, btn])
+        self.grid_flag = CheckBox(active=False, color=(0, 0, 1, 1), size_hint_x=None, width='30dp')
+        self.headpanel = self.init_hor_boxlayout([lbl, self.colrowspinner, self.objectspinner, btn, self.grid_flag])
         self.root.add_widget(self.headpanel)
         self.headpanel.bind(size=self._update_rect_headpanel, pos=self._update_rect_headpanel)
         with self.headpanel.canvas.before:
@@ -246,18 +247,21 @@ class MainApp(App):
         rows = int(TextSize[0])
         cols = int(TextSize[2])
         random.shuffle(self.IdsPngs)
+
         for i in range(rows):
-            hor = BoxLayout(orientation='horizontal', padding=10, spacing=10, )
-            for j in range(cols):#random.randint(1, 5)):
+            hor = BoxLayout(orientation='horizontal', padding=0, spacing=0)
+            for j in range(cols):
                 s = FlyScatterV3(do_rotation=True, do_scale=True, auto_bring_to_front=False, do_collide_after_children=False)
                 s.app = self
                 s.env = agent.Environment(int(self.episodespinner.text), self)
                 s.agent = agent.Agent()
                 hor.add_widget(s)
                 s.id = ids = self.IdsPngs[i*cols+j]
+                s.grid_rect = Widgets.get_random_widget('LineRectangle', [0, 0, Window.width // cols, Window.height // (rows + 1), f'S{i*cols+j}'])
+                if self.grid_flag.active: s.add_widget(s.grid_rect)
                 w = Widgets.get_app_icon(ids) if Objects=='Apps' else Widgets.get_food_icon(ids) if Objects=='Foods' else Widgets.get_random_widget()
                 w.width = f'{360 // cols}dp'#f'{Window.width//cols}dp'
-                w.height = f'{800 // rows}dp'#f'{Window.height//(rows+3)}dp'#
+                w.height = f'{800 // rows}dp'#f'{Window.height//(rows+3)}dp'
                 s.add_widget(w)
                 wi = Widgets.get_random_widget('Label')
                 s.add_widget(wi)
