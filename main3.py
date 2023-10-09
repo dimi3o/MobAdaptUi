@@ -1,4 +1,5 @@
 import random
+import torch
 import agent
 from dqnvianumpy.q_learning import train_main
 from dqnvianumpy.q_learning import test_main
@@ -23,18 +24,30 @@ from kivy.clock import Clock
 from kivy_garden.graph import LinePlot
 
 WhiteBackColor = True
-__version__ = '0.0.3.2'
+__version__ = '0.0.3.3'
 
 class MainApp(App):
     sm = ScreenManager()
     FlyScatters = []
     IdsPngs = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40]
     AdaptUiOnOff = False
-    y_discount = 0.99
+    y_discount = 0.999
     total_reward = 0
     rewards_count = 0
+    reward_data = [0. for i in range(40)]
+    loss_data = [0. for i in range(40)]
     target_ui_vect = [[0. for j in range(4)] for i in range(40)]
     current_ui_vect = [[0. for j in range(4)] for i in range(40)]
+    #DQN hyperparameters
+    batch_size = 64 #256
+    gamma = y_discount
+    eps_start = 1
+    eps_end = 0.01
+    eps_decay = 0.001
+    target_update = 5
+    memory_size = 100000
+    lr = 0.001
+    num_episodes = 1000
 
     def __init__(self, **kwargs):
         super(MainApp, self).__init__(**kwargs)
@@ -208,23 +221,37 @@ class MainApp(App):
             print('- end of episode -')
 
     def _update_clock(self, dt):
-        reward = self.total_reward
+        reward = self.reward_data[0]
+        loss = self.loss_data[0]
+        #reward = self.total_reward
         #reward = self.total_reward / self.rewards_count
         if self.reward_graph.ymax < reward: self.reward_graph.ymax = reward*1.2
         elif self.reward_graph.ymin > reward: self.reward_graph.ymin = reward*0.9
+        if self.reward_graph.ymax < loss: self.reward_graph.ymax = loss * 1.2
+        elif self.reward_graph.ymin > loss: self.reward_graph.ymin = loss * 0.9
         if abs(reward) > self.reward_graph.y_ticks_major * 20: self.reward_graph.y_ticks_major *= 4
+        if abs(loss) > self.reward_graph.y_ticks_major * 20: self.reward_graph.y_ticks_major *= 4
         if self.reward_graph.xmax > self.reward_graph.x_ticks_major * 20: self.reward_graph.x_ticks_major *= 2
         #if self.reward_graph.ymin == 0 and reward > 0: self.reward_graph.ymin = reward*0.93
         self.reward_points.append((self.reward_graph.xmax, reward))
+        self.loss_points.append((self.reward_graph.xmax, loss))
         self.reward_plot.points = [(x, y) for x, y in self.reward_points]
+        self.loss_plot.points = [(x, y) for x, y in self.loss_points]
         self.reward_graph.xmax += 1 / 8.
 
+
+
     def reset_reward_graph(self):
-        try: self.reward_graph.remove_plot(self.reward_plot)
+        try:
+            self.reward_graph.remove_plot(self.reward_plot)
+            self.reward_graph.remove_plot(self.loss_plot)
         except: pass
         self.reward_plot = LinePlot(line_width=2, color=[1, 0, 0, 1])
+        self.loss_plot = LinePlot(line_width=2, color=[0, 0, 1, 1])
         self.reward_graph.add_plot(self.reward_plot)
+        self.reward_graph.add_plot(self.loss_plot)
         self.reward_points = []
+        self.loss_points = []
         self.reward_graph.x_ticks_major = .5; self.reward_graph.y_ticks_major = .1
         self.reward_graph.xmin = 0; self.reward_graph.xmax = .1; self.reward_graph.ymin = 0; self.reward_graph.ymax = .1
 
@@ -255,8 +282,18 @@ class MainApp(App):
             for j in range(cols):
                 s = FlyScatterV3(do_rotation=True, do_scale=True, auto_bring_to_front=False, do_collide_after_children=False)
                 s.app = self
-                s.env = agent.Environment(int(self.episodespinner.text), self)
-                s.agent = agent.Agent()
+                #### DQN INIT start
+                s.strategy = agent.EpsilonGreedyStrategy(self.eps_start, self.eps_end, self.eps_decay)
+                s.env = agent.Environment(int(self.episodespinner.text), self, s)
+                s.set_vect_state()
+                s.agent = agent.Agent(s.strategy, s.env.num_actions_available())
+                s.memory = agent.ReplayMemory(self.memory_size)
+                s.policy_net = agent.get_nn_module(s.env.num_state_available()-1, s.agent.device)
+                s.target_net = agent.get_nn_module(s.env.num_state_available()-1, s.agent.device)
+                s.target_net.load_state_dict(s.policy_net.state_dict())
+                s.target_net.eval()
+                s.optimizer = agent.get_optimizer(s.policy_net, self.lr)
+                #### DQN INIT end
                 hor.add_widget(s)
                 s.id = ids = self.IdsPngs[i*cols+j]
                 s.grid_rect = Widgets.get_random_widget('LineRectangle', [0, 0, Window.width // cols, Window.height // (rows + 1), f'S{i*cols+j}'])
@@ -307,3 +344,6 @@ if __name__ == "__main__":
     # Window.on_resize(300, 800)
     app = MainApp()
     app.run()
+    # x = torch.randn(5)
+    # y = torch.randn(5)
+    # print(torch.cat([], 0))

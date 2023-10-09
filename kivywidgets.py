@@ -1,5 +1,6 @@
 import random
 import math as m
+from agent import plot
 from kivy.metrics import dp
 from kivy.lang import Builder
 from kivy.uix.widget import Widget
@@ -92,9 +93,14 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
     emulation = BooleanProperty(False)
     mode = 'Fly adapt'
     app = None
+    strategy = None
+    memory = None
     agent = None
+    policy_net = None
+    target_net = None
+    optimizer = None
     env = None
-    id = None
+    id = 1
     grid_rect = None
     raw_height = 0
     raw_width = 0
@@ -105,6 +111,7 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
     doublesize = BooleanProperty(False)
     nx, ny, ns, nr = 0, 0, 0, 0
     taps = 0
+    vect_state = []
 
     def __init__(self, **kwargs):
         super(FlyScatterV3, self).__init__(**kwargs)
@@ -112,43 +119,34 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
         self.velocity[1] *= random.choice([-2, 2])
         self.text = 'flyscatter'
         self.color = random.choice(allcolors)
-
-    # def on_touch_down(self, touch):
-    #     if touch.grab_current == self: self.tap_event()
-    #     super(FlyScatterV3, self).on_touch_down(touch)
-
-    def on_touch_up(self, touch):
-        if touch.grab_current == self: self.tap_event()
-        #print(self.id, self.taps, self.nx, self.ny, self.ns, self.nr)
-        self.app.do_current_ui_vect([self.id, self.taps, self.nx, self.ny, self.ns, self.nr])
-        super(FlyScatterV3, self).on_touch_up(touch)
+        if self.env: self.set_vect_state()
 
     def tap_event(self):
         self.taps += 1
         self.children[0].text = f'taps: {self.taps}'
         self.calc_norm_values()
-        _, r = self.MARL_core()
+        r = self.MARL_core()
         print(r)
 
     def toFixed(self,numObj, digits=0): return f"{numObj:.{digits}f}"
 
     def update_pos(self, *args):
-        self.calc_norm_values()
         if self.mode == 'MARL adapt':
-            a, r = self.MARL_core()
-            self.change_pos_size(a)
+            r = self.MARL_core()
+            #self.change_pos_size(a)
             self.app.total_reward += self.app.y_discount**self.app.rewards_count * r # DISCOUNTED REWARD 2
             #self.app.total_reward = r # SINGLE AGENT REWARD
             #self.app.total_reward += r  # SUMM REWARD
             self.app.rewards_count += 1
+            self.app.reward_data[int(self.id)-1] = self.agent.reward_data[-1]
+            self.app.loss_data[int(self.id)-1] = self.agent.loss_data[-1]
             if self.env.is_done():
                 self.emulation = self.set_emulation(False)
                 self.app.stop_emulation_async('MARL adapt is stopped. End of episode!', 'Adapt',
                                               self.agent.total_reward)
                 #print(self.id, self.taps, self.nx, self.ny, self.ns, self.nr)
             self.children[0].text = f'{self.nx}, {self.ny}'
-        elif self.mode ==  'Rotate adapt' or self.mode == 'Fly+Size+Rotate adapt':
-            self.rotation += random.choice([-1, 1])
+        elif self.mode ==  'Rotate adapt' or self.mode == 'Fly+Size+Rotate adapt': self.rotation += random.choice([-1, 1])
         elif self.mode == 'Fly adapt' or self.mode == 'Fly+Size+Rotate adapt':
             self.x += self.deltaposxy*self.velocity[0]
             self.y += self.deltaposxy*self.velocity[1]
@@ -167,9 +165,16 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
             self.children[1].height = h + self.reduceH
 
     def MARL_core(self):
-        e = self.env
-        e.vect_state = [int(self.id), int(self.taps), float(self.nx), float(self.ny), float(self.ns), float(self.nr)]
-        return self.agent.step(e)
+        a, r = self.agent.step(self.env)
+        if self.env.steps_left % self.app.target_update == 0:
+            self.target_net.load_state_dict(self.policy_net.state_dict())
+            # print('--- target_net update ---')
+        return r
+
+    def set_vect_state(self):
+        self.calc_norm_values()
+        self.vect_state = [int(self.id), int(self.taps), float(self.nx), float(self.ny), float(self.ns), float(self.nr)]
+        self.env.vect_state = self.vect_state
 
     def calc_norm_values(self):
         self.ns = self.toFixed(self.scale, 2)
@@ -186,6 +191,8 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
         elif to==5: self.scale -= deltascale
         elif to==6: self.rotation -= 1
         elif to==7: self.rotation += 1
+        self.set_vect_state()
+
 
     def change_emulation(self):
         self.emulation = self.set_emulation(True) if not(self.emulation) else self.set_emulation(False)
@@ -203,6 +210,17 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
         else:
             Clock.unschedule(self.update_pos)
             return False
+
+    def on_touch_up(self, touch):
+        if touch.grab_current == self: self.tap_event()
+        #print(self.id, self.taps, self.nx, self.ny, self.ns, self.nr)
+        self.app.do_current_ui_vect([self.id, self.taps, self.nx, self.ny, self.ns, self.nr])
+        super(FlyScatterV3, self).on_touch_up(touch)
+
+
+    # def on_touch_down(self, touch):
+    #     if touch.grab_current == self: self.tap_event()
+    #     super(FlyScatterV3, self).on_touch_down(touch)
 
     # def on_touch_move(self, touch):
         # if not self.doublesize:
