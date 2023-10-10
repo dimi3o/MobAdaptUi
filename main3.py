@@ -39,14 +39,14 @@ class MainApp(App):
     target_ui_vect = [[0. for j in range(4)] for i in range(40)]
     current_ui_vect = [[0. for j in range(4)] for i in range(40)]
     #DQN hyperparameters
-    batch_size = 20 #256
+    batch_size = 32 #256
     gamma = y_discount
     eps_start = 1
     eps_end = 0.01
-    eps_decay = 0.0001
+    eps_decay = 0.001
     target_update = 50
-    memory_size = 10000
-    lr = 0.0001
+    memory_size = 1000
+    lr = 0.01
     num_episodes = 1000
 
     def __init__(self, **kwargs):

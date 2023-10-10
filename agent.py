@@ -97,13 +97,14 @@ class Agent:
     def select_action(self, state, policy_net):
         rate = self.strategy.get_exploration_rate(self.current_step)
         self.current_step += 1
-        print(rate)
+        #print(rate)
         if rate > random.random():
             action = random.randrange(self.num_actions)
             return torch.tensor([action]).to(self.device) #explore
         else:
             with torch.no_grad(): #exploit
-                return torch.tensor([policy_net(state).argmax(dim=1)], device=self.device)
+                #return torch.tensor([policy_net(state).argmax(dim=1)], device=self.device)
+                return torch.tensor([policy_net(state).max(1)[1].view(1, 1)], device=self.device)
 
     def step(self, env):
         state = env.get_state()
