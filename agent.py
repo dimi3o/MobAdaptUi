@@ -97,7 +97,7 @@ class Agent:
     def select_action(self, state, policy_net):
         rate = self.strategy.get_exploration_rate(self.current_step)
         self.current_step += 1
-        #print(rate)
+        print(rate)
         if rate > random.random():
             action = random.randrange(self.num_actions)
             return torch.tensor([action]).to(self.device) #explore

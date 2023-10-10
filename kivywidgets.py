@@ -134,7 +134,7 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
         if self.mode == 'MARL adapt':
             r = self.MARL_core()
             #self.change_pos_size(a)
-            self.app.total_reward += self.app.y_discount**self.app.rewards_count * r # DISCOUNTED REWARD 2
+            #self.app.total_reward += self.app.y_discount**self.app.rewards_count * r # DISCOUNTED REWARD 2
             #self.app.total_reward = r # SINGLE AGENT REWARD
             #self.app.total_reward += r  # SUMM REWARD
             self.app.rewards_count += 1

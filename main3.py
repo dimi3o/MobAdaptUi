@@ -39,14 +39,14 @@ class MainApp(App):
     target_ui_vect = [[0. for j in range(4)] for i in range(40)]
     current_ui_vect = [[0. for j in range(4)] for i in range(40)]
     #DQN hyperparameters
-    batch_size = 32 #256
+    batch_size = 20 #256
     gamma = y_discount
     eps_start = 1
     eps_end = 0.01
-    eps_decay = 0.01
+    eps_decay = 0.0001
     target_update = 50
-    memory_size = 1000
-    lr = 0.01
+    memory_size = 10000
+    lr = 0.0001
     num_episodes = 1000
 
     def __init__(self, **kwargs):
@@ -225,21 +225,19 @@ class MainApp(App):
         loss = self.loss_data[0]
         #reward = self.total_reward
         #reward = self.total_reward / self.rewards_count
-        if self.reward_graph.ymax < reward: self.reward_graph.ymax = reward*1.2
-        elif self.reward_graph.ymin > reward: self.reward_graph.ymin = reward*0.9
-        if self.reward_graph.ymax < loss: self.reward_graph.ymax = loss * 1.2
-        elif self.reward_graph.ymin > loss: self.reward_graph.ymin = loss * 0.9
-        if abs(reward) > self.reward_graph.y_ticks_major * 20: self.reward_graph.y_ticks_major *= 4
-        if abs(loss) > self.reward_graph.y_ticks_major * 20: self.reward_graph.y_ticks_major *= 4
-        if self.reward_graph.xmax > self.reward_graph.x_ticks_major * 20: self.reward_graph.x_ticks_major *= 2
-        #if self.reward_graph.ymin == 0 and reward > 0: self.reward_graph.ymin = reward*0.93
         self.reward_points.append((self.reward_graph.xmax, reward))
         self.loss_points.append((self.reward_graph.xmax, loss))
-        self.reward_plot.points = [(x, y) for x, y in self.reward_points]
-        self.loss_plot.points = [(x, y) for x, y in self.loss_points]
+        self.reward_plot.points = self.reward_points
+        self.loss_plot.points = self.loss_points
         self.reward_graph.xmax += 1 / 8.
+        self.expand_graph_axes(self.reward_graph, new_ymax=reward)
+        self.expand_graph_axes(self.reward_graph, new_ymax=loss)
 
-
+    def expand_graph_axes(self, graph, new_ymax=1.):
+        if graph.ymax < new_ymax: graph.ymax = new_ymax*1.2
+        elif graph.ymin > new_ymax: graph.ymin = new_ymax*0.9
+        if abs(new_ymax) > graph.y_ticks_major * 20: graph.y_ticks_major *= 4
+        if graph.xmax > graph.x_ticks_major * 20: graph.x_ticks_major *= 2
 
     def reset_reward_graph(self):
         try:
