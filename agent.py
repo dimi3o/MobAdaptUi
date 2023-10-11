@@ -18,8 +18,9 @@ class Environment:
     last_reward = dict()
     action_space = [0, 1, 2, 3, 4, 5, 6, 7] # 0 - left, 1 - right, 2 - up, 3 - down, 4 - more, 5 - less, 6 - rotate left, 7 - rotate right
 
-    def __init__(self, episodes=200, app=None, widget=None):
+    def __init__(self, episodes=200, learning=150, app=None, widget=None):
         self.steps_left = episodes
+        self.steps_learning = learning
         self.app = app
         self.widget = widget
         self.current_state = None
@@ -131,7 +132,7 @@ class Agent:
         env.widget.memory.push(Experience(state, action, next_state, reward))
         # state = next_state
 
-        if env.widget.memory.can_provide_sample(env.app.batch_size):
+        if env.widget.memory.can_provide_sample(env.app.batch_size) and env.steps_learning>0:
             experiences = env.widget.memory.sample(env.app.batch_size)
             states, actions, rewards, next_states = extract_tensors(experiences)
 
@@ -142,7 +143,7 @@ class Agent:
             target_q_values = (next_q_values * env.app.gamma) + rewards
 
             # Compute Mean Square loss
-            #loss = F.mse_loss(current_q_values, target_q_values.unsqueeze(1))
+            # loss = F.mse_loss(current_q_values, target_q_values.unsqueeze(1))
             # Compute Huber loss
             criterion = nn.SmoothL1Loss()
             loss = criterion(current_q_values, target_q_values.unsqueeze(1))
@@ -153,6 +154,8 @@ class Agent:
             torch.nn.utils.clip_grad_value_(env.widget.policy_net.parameters(), 100)
             env.widget.optimizer.step()
             self.loss_data.append(loss.data.item())
+            env.steps_learning -= 1
+            if env.steps_learning<=0: print('-- end of steps learning --')
 
         self.reward_data.append(reward.data.item())
 
@@ -280,7 +283,7 @@ class EpsilonGreedyStrategy():
             math.exp(-1. * current_step * self.decay)
         if abs(epsilon - self.end) < 0.01 and not self.end_of_train:
             print('-- end of exploration --')
-            self.end_of_train = True
+            self.end_of_exploration = True
         return epsilon
 
 def plot(values, moving_avg_period):

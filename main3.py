@@ -39,16 +39,16 @@ class MainApp(App):
     target_ui_vect = [[0. for j in range(4)] for i in range(40)]
     current_ui_vect = [[0. for j in range(4)] for i in range(40)]
     #DQN hyperparameters
-    batch_size = 64 #256
+    batch_size = 32 #256
     gamma = y_discount
     eps_start = 1
     eps_end = 0.01
     eps_decay = 0.001
     target_update = 50
     TAU = 0.005 # TAU is the update rate of the target network
-    memory_size = 10000
+    memory_size = 1000
     lr = 0.01
-    num_episodes = 1000
+    steps_learning = 0.8
 
     def __init__(self, **kwargs):
         super(MainApp, self).__init__(**kwargs)
@@ -185,7 +185,7 @@ class MainApp(App):
     def to_screen(self, namescreen='mainscreen', direction='right'):
         self.sm.transition.direction = direction
         self.sm.current = namescreen
-        if namescreen == 'settings': print(self.current_ui_vect)
+        #if namescreen == 'settings': print(self.current_ui_vect)
 
     def adapt_ui(self, instance):
         m = self.modespinner.text
@@ -202,8 +202,12 @@ class MainApp(App):
             s.mode = self.modespinner.text
             if m == 'MARL adapt' and s.emulation:
                 s.agent.total_reward = 0
+                s.agent.current_step = 0
+                s.strategy.end_of_exploration = False
                 s.env.steps_left = int(self.episodespinner.text)
                 s.env.done = False
+                s.env.steps_learning = int(int(self.episodespinner.text) * self.steps_learning)-self.batch_size
+
             self.adapt_btn.background_color = (0.127,0.854,0.561,1) if s.emulation else (1, 0, 0, 1)
         if self.AdaptUiOnOff:
             Clock.schedule_interval(self._update_clock, 1 / 8.)
@@ -284,7 +288,9 @@ class MainApp(App):
                 s.app = self
                 #### DQN INIT start
                 s.strategy = agent.EpsilonGreedyStrategy(self.eps_start, self.eps_end, self.eps_decay)
-                s.env = agent.Environment(int(self.episodespinner.text), self, s)
+                steps_left = int(self.episodespinner.text)
+                steps_learning = int(int(self.episodespinner.text) * self.steps_learning) - self.batch_size
+                s.env = agent.Environment(steps_left, steps_learning, self, s)
                 s.set_vect_state()
                 s.agent = agent.Agent(s.strategy, s.env.num_actions_available())
                 s.memory = agent.ReplayMemoryPyTorch(self.memory_size)

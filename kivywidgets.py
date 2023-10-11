@@ -111,6 +111,7 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
     doublesize = BooleanProperty(False)
     nx, ny, ns, nr = 0, 0, 0, 0
     taps = 0
+    steps_learning = 0
     vect_state = []
 
     def __init__(self, **kwargs):
@@ -166,14 +167,15 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
 
     def MARL_core(self):
         a, r = self.agent.step(self.env)
-        if self.env.steps_left % self.app.target_update == 0:
-            target_net_state_dict = self.target_net.state_dict()
-            policy_net_state_dict = self.policy_net.state_dict()
-            for key in policy_net_state_dict:
-                target_net_state_dict[key] = policy_net_state_dict[key] * self.app.TAU + target_net_state_dict[key] * (1 - self.app.TAU)
-            self.target_net.load_state_dict(target_net_state_dict)
 
-            #self.target_net.load_state_dict(self.policy_net.state_dict())
+        # target_net_state_dict = self.target_net.state_dict()
+        # policy_net_state_dict = self.policy_net.state_dict()
+        # for key in policy_net_state_dict:
+        #     target_net_state_dict[key] = policy_net_state_dict[key] * self.app.TAU + target_net_state_dict[key] * (1 - self.app.TAU)
+        # self.target_net.load_state_dict(target_net_state_dict)
+
+        if self.env.steps_left % self.app.target_update == 0:
+            self.target_net.load_state_dict(self.policy_net.state_dict())
             # print('--- target_net update ---')
         return r
 
