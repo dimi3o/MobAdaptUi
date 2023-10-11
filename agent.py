@@ -3,7 +3,7 @@ import random
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-from collections import namedtuple
+from collections import namedtuple, deque
 from itertools import count
 import torch
 import torch.nn as nn
@@ -15,6 +15,7 @@ class Environment:
     app = None
     widget = None
     vect_state = []
+    last_reward = dict()
     action_space = [0, 1, 2, 3, 4, 5, 6, 7] # 0 - left, 1 - right, 2 - up, 3 - down, 4 - more, 5 - less, 6 - rotate left, 7 - rotate right
 
     def __init__(self, episodes=200, app=None, widget=None):
@@ -26,6 +27,7 @@ class Environment:
 
     def reset(self):
         self.current_state = None
+        self.last_reward.clear()
 
     def just_starting(self):
         return self.current_state is None
@@ -50,22 +52,30 @@ class Environment:
 
     def get_rewards(self):
         cuv = self.vect_state #0 - self.id, 1 - self.taps, 2 - self.nx, 3 - self.ny, 4 - self.ns, 5 - self.nr
-        tuv = self.app.target_ui_vect[cuv[0]-1] # 0 - self.nx, 1 - self.ny, 2 - self.ns, 3 - self.nr
-        R1 = 1 - abs(tuv[0] - cuv[2])  # nx, position X
-        R2 = 1 - abs(tuv[1] - cuv[3])  # ny, position Y
-        R3 = 1 - abs(tuv[2] - cuv[4])  # ns, scale
-        R4 = 0.5 - abs(tuv[3] - cuv[5])  # ny, rotate
-        R5 = cuv[1] / 10. if cuv[1]<=10 else 1  # taps
-        R0 = [R1, R2, R3, R4] # if cuv[1]>0: print(R0,':',cuv,tuv)
-        return R0, R5
+        id = cuv[0] - 1
+        tuv = self.app.target_ui_vect[id] # 0 - self.nx, 1 - self.ny, 2 - self.ns, 3 - self.nr
+        cur_reward = []
+        cur_reward.append(1 - abs(tuv[0] - cuv[2]))  # nx, position X
+        cur_reward.append(1 - abs(tuv[1] - cuv[3]))  # ny, position Y
+        cur_reward.append(1 - abs(tuv[2] - cuv[4]))  # ns, scale
+        cur_reward.append(0.5 - abs(tuv[3] - cuv[5]))  # ny, rotate
+        cur_reward.append(cuv[1]) # / 10. if cuv[1]<=10 else 1)  # taps
+        if self.last_reward.get(id, None) is not None:
+            last_reward = self.last_reward[id].copy()
+            self.last_reward[id] = cur_reward.copy()
+            for i in range(5):
+                cur_reward[i] = 1 if last_reward[i] < cur_reward[i] else -1 if last_reward[i] > cur_reward[i] else 0
+        else:
+            self.last_reward[id] = cur_reward.copy()
+        return cur_reward[:4], cur_reward[4]
 
     def take_action(self, action):
-        self.widget.change_pos_size(action.data.item())
+        penalty = self.widget.change_pos_size(action.data.item())
         self.steps_left -= 1
         if self.is_done(): self.done = True
         r_pos, r_taps = self.get_rewards()
-        reward = sum(r_pos) / len(r_pos) + r_taps
-        return sum(r_pos) / len(r_pos), torch.tensor([reward], device=self.widget.agent.device)
+        reward = sum(r_pos) + r_taps + penalty
+        return reward, torch.tensor([reward], device=self.widget.agent.device)
         #rewards.sort()  #reverse=True)
         #return sum(rewards)/100
         #return min(rewards[:3])
@@ -131,9 +141,16 @@ class Agent:
             #next_q_values = QValues.get_current(env.widget.target_net, next_states, actions)
             target_q_values = (next_q_values * env.app.gamma) + rewards
 
-            loss = F.mse_loss(current_q_values, target_q_values.unsqueeze(1))
+            # Compute Mean Square loss
+            #loss = F.mse_loss(current_q_values, target_q_values.unsqueeze(1))
+            # Compute Huber loss
+            criterion = nn.SmoothL1Loss()
+            loss = criterion(current_q_values, target_q_values.unsqueeze(1))
+
             env.widget.optimizer.zero_grad()
             loss.backward()
+            # In-place gradient clipping
+            torch.nn.utils.clip_grad_value_(env.widget.policy_net.parameters(), 100)
             env.widget.optimizer.step()
             self.loss_data.append(loss.data.item())
 
@@ -175,14 +192,6 @@ class QValues():
         # values[non_final_state_locations] = target_net(next_states).max(dim=1)[0].detach()
         return target_net(next_states).max(dim=1)[0].detach()
 
-# if __name__ == "__main__":
-#     env = Environment()
-#     agent = Agent()
-#
-#     while not env.is_done():
-#         agent.step(env)
-#
-#     print("Total reward got: %.4f" % agent.total_reward)
 
 def extract_tensors(experiences):
     batch = Experience(*zip(*experiences))
@@ -193,18 +202,22 @@ def extract_tensors(experiences):
     return (t1, t2, t3, t4)
 
 def get_optimizer(policy_net, lr):
-    return optim.Adam(params=policy_net.parameters(), lr=lr)
+    #return optim.Adam(params=policy_net.parameters(), lr=lr)
+    return optim.AdamW(params=policy_net.parameters(), lr=lr, amsgrad=True)
 
 def get_nn_module(input_length, device):
     return DQN(input_length).to(device)
 
 class DQN(nn.Module):
     def __init__(self, state_len):
-        super().__init__()
+        super(DQN, self).__init__()
         # 0 - left, 1 - right, 2 - up, 3 - down, 4 - more, 5 - less, 6 - rotate left, 7 - rotate right
         self.fc1 = nn.Linear(in_features=state_len, out_features=24)
         self.fc2 = nn.Linear(in_features=24, out_features=32)
         self.out = nn.Linear(in_features=32, out_features=8)
+        # self.fc1 = nn.Linear(in_features=state_len, out_features=40)
+        # self.fc2 = nn.Linear(in_features=40, out_features=64)
+        # self.out = nn.Linear(in_features=64, out_features=8)
 
     def forward(self, t):
         # t = t.flatten(start_dim=1) #for image processing
@@ -238,16 +251,37 @@ class ReplayMemory():
     def can_provide_sample(self, batch_size):
         return len(self.memory) >= batch_size
 
+class ReplayMemoryPyTorch(object):
+
+    def __init__(self, capacity):
+        self.memory = deque([], maxlen=capacity)
+
+    def push(self, experience):
+        self.memory.append(experience)
+
+    def sample(self, batch_size):
+        return random.sample(self.memory, batch_size)
+
+    def __len__(self):
+        return len(self.memory)
+
+    def can_provide_sample(self, batch_size):
+        return len(self.memory) >= batch_size
 
 class EpsilonGreedyStrategy():
+    end_of_train = False
     def __init__(self, start, end, decay):
         self.start = start
         self.end = end
         self.decay = decay
 
     def get_exploration_rate(self, current_step):
-        return self.end + (self.start - self.end) * \
+        epsilon = self.end + (self.start - self.end) * \
             math.exp(-1. * current_step * self.decay)
+        if abs(epsilon - self.end) < 0.01 and not self.end_of_train:
+            print('-- end of exploration --')
+            self.end_of_train = True
+        return epsilon
 
 def plot(values, moving_avg_period):
     plt.figure(2)

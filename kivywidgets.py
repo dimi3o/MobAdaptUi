@@ -167,7 +167,13 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
     def MARL_core(self):
         a, r = self.agent.step(self.env)
         if self.env.steps_left % self.app.target_update == 0:
-            self.target_net.load_state_dict(self.policy_net.state_dict())
+            target_net_state_dict = self.target_net.state_dict()
+            policy_net_state_dict = self.policy_net.state_dict()
+            for key in policy_net_state_dict:
+                target_net_state_dict[key] = policy_net_state_dict[key] * self.app.TAU + target_net_state_dict[key] * (1 - self.app.TAU)
+            self.target_net.load_state_dict(target_net_state_dict)
+
+            #self.target_net.load_state_dict(self.policy_net.state_dict())
             # print('--- target_net update ---')
         return r
 
@@ -183,15 +189,17 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
 
     # 0 - left, 1 - right, 2 - up, 3 - down, 4 - more, 5 - less
     def change_pos_size(self, to=0, deltapos=1, deltascale=0.01):
-        if to==0 and self.x>0: self.x -= deltapos
-        elif to==1 and self.x+self.width<Window.width: self.x += deltapos
-        elif to==2 and self.y+self.height<Window.height: self.y += deltapos
-        elif to==3 and self.y>0: self.y -= deltapos
-        elif to==4: self.scale += deltascale
-        elif to==5: self.scale -= deltascale
-        elif to==6: self.rotation -= 1
-        elif to==7: self.rotation += 1
+        r = -1
+        if to==0 and self.x>0: self.x -= deltapos; r = .01
+        elif to==1 and self.x+self.width<Window.width: self.x += deltapos; r = .01
+        elif to==2 and self.y+self.height<Window.height: self.y += deltapos; r = .01
+        elif to==3 and self.y>0: self.y -= deltapos; r = .01
+        elif to==4 and self.scale<2.: self.scale += deltascale; r = .01
+        elif to==5 and self.scale>0.4: self.scale -= deltascale; r = .01
+        elif to==6: self.rotation -= 1; r = .0 # and (self.rotation>265 or self.rotation==0.)
+        elif to==7: self.rotation += 1; r = .0 # self.rotation<110
         self.set_vect_state()
+        return r
 
 
     def change_emulation(self):

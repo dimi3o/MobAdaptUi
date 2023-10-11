@@ -39,13 +39,14 @@ class MainApp(App):
     target_ui_vect = [[0. for j in range(4)] for i in range(40)]
     current_ui_vect = [[0. for j in range(4)] for i in range(40)]
     #DQN hyperparameters
-    batch_size = 32 #256
+    batch_size = 64 #256
     gamma = y_discount
     eps_start = 1
     eps_end = 0.01
     eps_decay = 0.001
     target_update = 50
-    memory_size = 1000
+    TAU = 0.005 # TAU is the update rate of the target network
+    memory_size = 10000
     lr = 0.01
     num_episodes = 1000
 
@@ -202,6 +203,7 @@ class MainApp(App):
             if m == 'MARL adapt' and s.emulation:
                 s.agent.total_reward = 0
                 s.env.steps_left = int(self.episodespinner.text)
+                s.env.done = False
             self.adapt_btn.background_color = (0.127,0.854,0.561,1) if s.emulation else (1, 0, 0, 1)
         if self.AdaptUiOnOff:
             Clock.schedule_interval(self._update_clock, 1 / 8.)
@@ -235,7 +237,7 @@ class MainApp(App):
 
     def expand_graph_axes(self, graph, new_ymax=1.):
         if graph.ymax < new_ymax: graph.ymax = new_ymax*1.2
-        elif graph.ymin > new_ymax: graph.ymin = new_ymax*0.9
+        elif graph.ymin > new_ymax: graph.ymin = new_ymax*0.8
         if abs(new_ymax) > graph.y_ticks_major * 20: graph.y_ticks_major *= 4
         if graph.xmax > graph.x_ticks_major * 20: graph.x_ticks_major *= 2
 
@@ -285,11 +287,11 @@ class MainApp(App):
                 s.env = agent.Environment(int(self.episodespinner.text), self, s)
                 s.set_vect_state()
                 s.agent = agent.Agent(s.strategy, s.env.num_actions_available())
-                s.memory = agent.ReplayMemory(self.memory_size)
+                s.memory = agent.ReplayMemoryPyTorch(self.memory_size)
                 s.policy_net = agent.get_nn_module(s.env.num_state_available()-1, s.agent.device)
                 s.target_net = agent.get_nn_module(s.env.num_state_available()-1, s.agent.device)
                 s.target_net.load_state_dict(s.policy_net.state_dict())
-                s.target_net.eval()
+                #s.target_net.eval()
                 s.optimizer = agent.get_optimizer(s.policy_net, self.lr)
                 #### DQN INIT end
                 hor.add_widget(s)
