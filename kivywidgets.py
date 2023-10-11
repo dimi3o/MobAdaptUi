@@ -140,6 +140,7 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
             #self.app.total_reward += r  # SUMM REWARD
             self.app.rewards_count += 1
             self.app.reward_data[int(self.id)-1] = self.agent.reward_data[-1]
+            self.app.cumulative_reward_data[int(self.id) - 1] += self.agent.reward_data[-1]
             self.app.loss_data[int(self.id)-1] = self.agent.loss_data[-1]
             if self.env.is_done():
                 self.emulation = self.set_emulation(False)
@@ -198,8 +199,8 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
         elif to==3 and self.y>0: self.y -= deltapos; r = .01
         elif to==4 and self.scale<2.: self.scale += deltascale; r = .01
         elif to==5 and self.scale>0.4: self.scale -= deltascale; r = .01
-        elif to==6: self.rotation -= 1; r = .0 # and (self.rotation>265 or self.rotation==0.)
-        elif to==7: self.rotation += 1; r = .0 # self.rotation<110
+        elif to==6: self.rotation -= 1; r = .01 # and (self.rotation>265 or self.rotation==0.)
+        elif to==7: self.rotation += 1; r = .01 # self.rotation<110
         self.set_vect_state()
         return r
 

@@ -35,6 +35,7 @@ class MainApp(App):
     total_reward = 0
     rewards_count = 0
     reward_data = [0. for i in range(40)]
+    cumulative_reward_data = [0. for i in range(40)]
     loss_data = [0. for i in range(40)]
     target_ui_vect = [[0. for j in range(4)] for i in range(40)]
     current_ui_vect = [[0. for j in range(4)] for i in range(40)]
@@ -48,7 +49,7 @@ class MainApp(App):
     TAU = 0.005 # TAU is the update rate of the target network
     memory_size = 1000
     lr = 0.01
-    steps_learning = 0.8
+    steps_learning = 0.5
 
     def __init__(self, **kwargs):
         super(MainApp, self).__init__(**kwargs)
@@ -206,7 +207,7 @@ class MainApp(App):
                 s.strategy.end_of_exploration = False
                 s.env.steps_left = int(self.episodespinner.text)
                 s.env.done = False
-                s.env.steps_learning = int(int(self.episodespinner.text) * self.steps_learning)-self.batch_size
+                s.env.steps_learning = int((int(self.episodespinner.text) -self.batch_size ) * self.steps_learning)
 
             self.adapt_btn.background_color = (0.127,0.854,0.561,1) if s.emulation else (1, 0, 0, 1)
         if self.AdaptUiOnOff:
@@ -227,7 +228,8 @@ class MainApp(App):
             print('- end of episode -')
 
     def _update_clock(self, dt):
-        reward = self.reward_data[0]
+        #reward = self.reward_data[0]
+        reward = self.cumulative_reward_data[0]
         loss = self.loss_data[0]
         #reward = self.total_reward
         #reward = self.total_reward / self.rewards_count
@@ -279,7 +281,7 @@ class MainApp(App):
         cols = int(TextSize[2])
         random.shuffle(self.IdsPngs)
 
-        print('W =', Window.width, ',w =', Window.width // cols, ',H =', Window.height, ',h =', Window.height // (rows + 1))
+        #print('W =', Window.width, ',w =', Window.width // cols, ',H =', Window.height, ',h =', Window.height // (rows + 1))
 
         for i in range(rows):
             hor = BoxLayout(orientation='horizontal', padding=0, spacing=0)
@@ -289,7 +291,7 @@ class MainApp(App):
                 #### DQN INIT start
                 s.strategy = agent.EpsilonGreedyStrategy(self.eps_start, self.eps_end, self.eps_decay)
                 steps_left = int(self.episodespinner.text)
-                steps_learning = int(int(self.episodespinner.text) * self.steps_learning) - self.batch_size
+                steps_learning = int((int(self.episodespinner.text) -self.batch_size ) * self.steps_learning)
                 s.env = agent.Environment(steps_left, steps_learning, self, s)
                 s.set_vect_state()
                 s.agent = agent.Agent(s.strategy, s.env.num_actions_available())
