@@ -39,6 +39,7 @@ class MainApp(App):
     loss_data = [0. for i in range(40)]
     target_ui_vect = [[0. for j in range(4)] for i in range(40)]
     current_ui_vect = [[0. for j in range(4)] for i in range(40)]
+    sliders_reward = []
     #DQN hyperparameters
     batch_size = 32 #256
     gamma = y_discount
@@ -110,11 +111,17 @@ class MainApp(App):
 
         # SETTINGS SCREEN
         self.root1 = BoxLayout(orientation='vertical', padding=10)
-        self.root2 = BoxLayout(orientation='vertical', padding=10) #reward graph tab
-        self.root3 = BoxLayout(orientation='vertical', padding=10) #ui vect tab
+        self.root2 = BoxLayout(orientation='vertical', padding=10) #graph tab
+        self.root3 = BoxLayout(orientation='vertical', padding=10) #reward func tab
         self.root4 = BoxLayout(orientation='vertical', padding=10) #dqn test
 
         self.targetUiVect = TextInput(password=False, multiline=True, readonly=True)
+        for i in range(7):
+            self.sliders_reward.append(Label(text=f'R{str(i+1)}:', color=(0, 0, 0, 1)))
+            w = Widgets.get_random_widget('Slider', -1., 1., 0.1 if i == 5 else 1 if i < 5 else -1, 0.1)
+            self.sliders_reward.append(w)
+            #self.sliders_reward.append(Label(text='{}'.format(w.value), color=(0, 0, 0, 1)))
+        self.root3.add_widget(self.init_hor_boxlayout(self.sliders_reward))
         self.root3.add_widget(self.targetUiVect)
         self.kitchenspinner = Spinner(text=self.kitchen[0], values=self.kitchen, background_color=(0.027, 0.954, 0.061, 1))
         self.kitchenspinner.bind(text=self.target_ui_selected_value)
@@ -135,10 +142,10 @@ class MainApp(App):
         # self.AsyncConsoleScatter.start_emulation(self.console)
 
         tp = TabbedPanel(do_default_tab=False, background_color=(0,0,0,0))
-        reward_th = TabbedPanelHeader(text='Reward Graph')
+        reward_th = TabbedPanelHeader(text='Graph')
         tp.add_widget(reward_th)
         reward_th.content = self.root2
-        uivect_th = TabbedPanelHeader(text='UI Vect')
+        uivect_th = TabbedPanelHeader(text='Reward Func')
         tp.add_widget(uivect_th)
         uivect_th.content = self.root3
         dqnvect_th = TabbedPanelHeader(text='DQN test')
@@ -304,7 +311,7 @@ class MainApp(App):
                 #### DQN INIT end
                 hor.add_widget(s)
                 s.id = ids = self.IdsPngs[i*cols+j]
-                s.grid_rect = Widgets.get_random_widget('LineRectangle', [0, 0, Window.width // cols, Window.height // (rows + 1), f'S{i*cols+j}'])
+                s.grid_rect = Widgets.get_random_widget('LineRectangle', 0, 0, Window.width // cols, Window.height // (rows + 1), f'S{i*cols+j}')
                 if self.grid_flag.active: s.add_widget(s.grid_rect)
                 w = Widgets.get_app_icon(ids) if Objects=='Apps' else Widgets.get_food_icon(ids) if Objects=='Foods' else Widgets.get_random_widget()
                 w.width = f'{360 // cols}dp'#f'{Window.width//cols}dp'

@@ -25,14 +25,16 @@ widgets = ['Image','TextInput','Label','Button','CheckBox','Slider','Switch','Sp
 
 class Widgets(object):
     @staticmethod
-    def get_random_widget(name='', params=[]):
+    def get_random_widget(name='', *params):
         ret = random.choice(widgets) if (name == '') else name
         if ret == 'Image': return Image(source='data/icons/bug1.png', allow_stretch=True, keep_ratio=True)
         elif ret == 'TextInput': return TextInput(text='textinput')
         elif ret == 'Label': return Label(text='label', color=random.choice(allcolors))
         elif ret == 'Button': return Button(text='button', background_color=random.choice(allcolors))
         elif ret == 'CheckBox': return CheckBox(active=True)
-        elif ret == 'Slider': return Slider(min=1, max=10, value=1, step=1)
+        elif ret == 'Slider':
+            if len(params)>0: return Slider(min=params[0], max=params[1], value=params[2], step=params[3])
+            return Slider(min=1, max=10, value=1, step=1)
         elif ret == 'Switch': return Switch(active=True)
         elif ret == 'Spinner': return Spinner(text="Spinner", values=("Python", "Java", "C++", "C", "C#", "PHP"), background_color=(0.784,0.443,0.216,1))
         elif ret == 'ProgressBar': return ProgressBar(max=1000, value=750)
