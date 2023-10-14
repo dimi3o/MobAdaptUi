@@ -40,15 +40,17 @@ class MainApp(App):
     target_ui_vect = [[0. for j in range(4)] for i in range(40)]
     current_ui_vect = [[0. for j in range(4)] for i in range(40)]
     sliders_reward = []
+    strategy = None
     #DQN hyperparameters
     batch_size = 32 #256
     gamma = y_discount
     eps_start = 1
     eps_end = 0.01
     eps_decay = 0.001
+    eps_decay_steps = 200
     target_update = 50
     TAU = 0.005 # TAU is the update rate of the target network
-    memory_size = 1000
+    memory_size = 10000
     lr = 0.01
     steps_learning = 0.5
 
@@ -115,31 +117,41 @@ class MainApp(App):
         self.root3 = BoxLayout(orientation='vertical', padding=10) #reward func tab
         self.root4 = BoxLayout(orientation='vertical', padding=10) #dqn test
 
+        # SETTINGS SCREEN, reward func tab
         self.targetUiVect = TextInput(password=False, multiline=True, readonly=True)
+        cur_sl_label = Label(text='_._', color=(1, 0, 0, 1))
+        temp_sliders = [cur_sl_label]
         for i in range(7):
-            self.sliders_reward.append(Label(text=f'R{str(i+1)}:', color=(0, 0, 0, 1)))
-            w = Widgets.get_random_widget('Slider', -1., 1., 0.1 if i == 5 else 1 if i < 5 else -1, 0.1)
-            self.sliders_reward.append(w)
-            #self.sliders_reward.append(Label(text='{}'.format(w.value), color=(0, 0, 0, 1)))
-        self.root3.add_widget(self.init_hor_boxlayout(self.sliders_reward))
-        self.root3.add_widget(self.targetUiVect)
+            param = 'nx' if i==0 else 'ny' if i==1 else 'ns' if i==2 else 'nr' if i==3 else 'nt' if i==4 else 'penalty+'if i==5 else 'penalty-'
+            sl_label = Label(text=f'R{str(i+1)} ({param}):', color=(0, 0, 0, 1), size_hint_x=None, width='80dp')
+            value = 0.1 if i == 5 else 1 if i < 5 else -1
+            slider = Widgets.get_random_widget('Slider', -1., 1., value, 0.01)
+            labelcallback = lambda instance, value: self.OnSliderRewardChangeValue(cur_sl_label, value)
+            slider.bind(value=labelcallback)
+            temp_sliders.append(self.init_hor_boxlayout([sl_label, slider], my_height=False))
+            self.sliders_reward.append(slider)
+
+        self.root3.add_widget(self.init_hor_boxlayout([self.init_vert_boxlayout(temp_sliders),self.targetUiVect], my_height=False))
+        #self.root3.add_widget(self.targetUiVect)
         self.kitchenspinner = Spinner(text=self.kitchen[0], values=self.kitchen, background_color=(0.027, 0.954, 0.061, 1))
         self.kitchenspinner.bind(text=self.target_ui_selected_value)
         self.root3.add_widget(self.init_hor_boxlayout([Label(text='Kitchen:', color=(0, 0, 1, 1)),self.kitchenspinner]))
+
+        # SETTINGS SCREEN, graph tab
         self.root2.add_widget(Label(text='TOTAL REWARD', color=(0, 0, 0, 1)))
         self.reward_graph = Widgets.get_graph_widget(.5, .5, 0, .1, 0, .1, 'Time, [sec]', WhiteBackColor)
         self.graph_layout = BoxLayout(orientation='horizontal', size_hint_y=None)
         self.reward_graph.height = self.graph_layout.height = Window.height*5/7
         self.graph_layout.add_widget(self.reward_graph)
         self.root2.add_widget(self.graph_layout)
+
+        # SETTINGS SCREEN, dqn test
         self.console = TextInput(password=False, multiline=True, readonly=True)
         self.root4.add_widget(self.console)
         self.dqnmodespinner = Spinner(text=self.modeargs[0], values=self.modeargs, background_color=(0.027, 0.954, 0.061, 1))
         self.dqnr_modespinner = Spinner(text=self.r_modeargs[0], values=self.r_modeargs, background_color=(0.027, 0.125, 0.061, 1))
         self.test_dqn_btn = Button(text='TEST', size_hint_y=None, height='30dp', background_color=(1, 0, 0, 1), on_press=self.test_dqn)
         self.root4.add_widget(self.init_hor_boxlayout([Label(text='Mode:', color=(1, 0, 1, 1)), self.dqnmodespinner, self.dqnr_modespinner, self.test_dqn_btn]))
-        # self.AsyncConsoleScatter = AsyncConsoleScatter()
-        # self.AsyncConsoleScatter.start_emulation(self.console)
 
         tp = TabbedPanel(do_default_tab=False, background_color=(0,0,0,0))
         reward_th = TabbedPanelHeader(text='Graph')
@@ -166,6 +178,8 @@ class MainApp(App):
                 self.rect = Rectangle(size=self.root.size, pos=self.sm.pos)
 
         return self.sm
+
+    def OnSliderRewardChangeValue(self, label, value): label.text=f"{value:.{2}f}"
 
     # Need Asynchronous app
     # https://kivy.org/doc/stable/api-kivy.app.html#module-kivy.app
@@ -211,7 +225,7 @@ class MainApp(App):
             if m == 'MARL adapt' and s.emulation:
                 s.agent.total_reward = 0
                 s.agent.current_step = 0
-                s.strategy.end_of_exploration = False
+                s.app.strategy.end_of_exploration = False
                 s.env.steps_left = int(self.episodespinner.text)
                 s.env.done = False
                 s.env.steps_learning = int((int(self.episodespinner.text) -self.batch_size ) * self.steps_learning)
@@ -232,7 +246,7 @@ class MainApp(App):
             Clock.unschedule(self._update_clock)
             self.adapt_btn.background_color = (1, 0, 0, 1)
             #self.show_popup(Text, Header)
-            print('- end of episode -')
+            #print('- end of episode -')
 
     def _update_clock(self, dt):
         #reward = self.reward_data[0]
@@ -296,12 +310,12 @@ class MainApp(App):
                 s = FlyScatterV3(do_rotation=True, do_scale=True, auto_bring_to_front=False, do_collide_after_children=False)
                 s.app = self
                 #### DQN INIT start
-                s.strategy = agent.EpsilonGreedyStrategy(self.eps_start, self.eps_end, self.eps_decay)
+                s.app.strategy = agent.EpsilonGreedyStrategy(self.eps_start, self.eps_end, self.eps_decay, self.eps_decay_steps)
                 steps_left = int(self.episodespinner.text)
                 steps_learning = int((int(self.episodespinner.text) -self.batch_size ) * self.steps_learning)
                 s.env = agent.Environment(steps_left, steps_learning, self, s)
                 s.set_vect_state()
-                s.agent = agent.Agent(s.strategy, s.env.num_actions_available())
+                s.agent = agent.Agent(s.app.strategy, s.env.num_actions_available())
                 s.memory = agent.ReplayMemoryPyTorch(self.memory_size)
                 s.policy_net = agent.get_nn_module(s.env.num_state_available()-1, s.agent.device)
                 s.target_net = agent.get_nn_module(s.env.num_state_available()-1, s.agent.device)
@@ -327,10 +341,18 @@ class MainApp(App):
 
             self.mainscreen_widgets.add_widget(hor)
 
-    def init_hor_boxlayout(self,widjets):
-        hor = BoxLayout(orientation='horizontal', padding=0, spacing=0, size_hint_y=None, height='30dp')
+    def init_hor_boxlayout(self, widjets, my_height=True):
+        if my_height:
+            hor = BoxLayout(orientation='horizontal', padding=0, spacing=0, size_hint_y=None, height='30dp')
+        else:
+            hor = BoxLayout(orientation='horizontal', padding=0, spacing=0)
         for w in widjets: hor.add_widget(w)
         return hor
+
+    def init_vert_boxlayout(self, widjets):
+        vert = BoxLayout(orientation='vertical', padding=0, spacing=0, size_hint_x=None, width='400dp')
+        for w in widjets: vert.add_widget(w)
+        return vert
 
     def _update_rect(self, instance, value):
         self.rect.pos = instance.pos

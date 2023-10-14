@@ -95,7 +95,6 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
     emulation = BooleanProperty(False)
     mode = 'Fly adapt'
     app = None
-    strategy = None
     memory = None
     agent = None
     policy_net = None
@@ -194,15 +193,16 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
 
     # 0 - left, 1 - right, 2 - up, 3 - down, 4 - more, 5 - less
     def change_pos_size(self, to=0, deltapos=1, deltascale=0.01):
-        r = -1
-        if to==0 and self.x>0: self.x -= deltapos; r = .01
-        elif to==1 and self.x+self.width<Window.width: self.x += deltapos; r = .01
-        elif to==2 and self.y+self.height<Window.height: self.y += deltapos; r = .01
-        elif to==3 and self.y>0: self.y -= deltapos; r = .01
-        elif to==4 and self.scale<2.: self.scale += deltascale; r = .01
-        elif to==5 and self.scale>0.4: self.scale -= deltascale; r = .01
-        elif to==6: self.rotation -= 1; r = .01 # and (self.rotation>265 or self.rotation==0.)
-        elif to==7: self.rotation += 1; r = .01 # self.rotation<110
+        r = self.app.sliders_reward[5].value # reward for action
+        if to==0 and self.x>0: self.x -= deltapos
+        elif to==1 and self.x+self.width<Window.width: self.x += deltapos
+        elif to==2 and self.y+self.height<Window.height: self.y += deltapos
+        elif to==3 and self.y>0: self.y -= deltapos
+        elif to==4 and self.scale<2.: self.scale += deltascale
+        elif to==5 and self.scale>0.4: self.scale -= deltascale
+        elif to==6: self.rotation -= 1 # and (self.rotation>265 or self.rotation==0.)
+        elif to==7: self.rotation += 1 # self.rotation<110
+        else: r = self.app.sliders_reward[6].value # penalty for inaction
         self.set_vect_state()
         return r
 

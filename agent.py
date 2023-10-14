@@ -1,7 +1,7 @@
 import math
 import random
-import matplotlib
-import matplotlib.pyplot as plt
+# import matplotlib
+# import matplotlib.pyplot as plt
 import numpy as np
 from collections import namedtuple, deque
 from itertools import count
@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-import torchvision.transforms as T
+#import torchvision.transforms as T
 
 class Environment:
     app = None
@@ -65,7 +65,7 @@ class Environment:
             last_reward = self.last_reward[id].copy()
             self.last_reward[id] = cur_reward.copy()
             for i in range(5):
-                cur_reward[i] = 1 if last_reward[i] < cur_reward[i] else -1 if last_reward[i] > cur_reward[i] else 0
+                cur_reward[i] = self.app.sliders_reward[i].value if last_reward[i] < cur_reward[i] else -1 if last_reward[i] > cur_reward[i] else 0
         else:
             self.last_reward[id] = cur_reward.copy()
         return cur_reward[:4], cur_reward[4]
@@ -106,7 +106,7 @@ class Agent:
         self.total_reward = 0.0
 
     def select_action(self, state, policy_net):
-        rate = self.strategy.get_exploration_rate(self.current_step)
+        rate = self.strategy.get_exploration_rate2(self.current_step)
         self.current_step += 1
         #print(rate)
         if rate > random.random():
@@ -155,7 +155,7 @@ class Agent:
             env.widget.optimizer.step()
             self.loss_data.append(loss.data.item())
             env.steps_learning -= 1
-            if env.steps_learning<=0: print('-- end of steps learning --')
+            #if env.steps_learning<=0: print('-- end of steps learning --')
 
         self.reward_data.append(reward.data.item())
 
@@ -209,7 +209,8 @@ def get_optimizer(policy_net, lr):
     return optim.AdamW(params=policy_net.parameters(), lr=lr, amsgrad=True)
 
 def get_nn_module(input_length, device):
-    return DQN(input_length).to(device)
+    return Q_network(input_length).to(device)
+    #return DQN(input_length).to(device)
 
 class DQN(nn.Module):
     def __init__(self, state_len):
@@ -228,6 +229,31 @@ class DQN(nn.Module):
         t = F.relu(self.fc2(t))
         return self.out(t)
 
+#Определяем архитектуру нейронной сети
+class Q_network(nn.Module):
+    #На вход нейронная сеть получает состояние среды
+    #На выходе нейронная сеть возвращает оценку действий в виде Q-значений
+    def __init__(self, obs_size, n_actions=8):
+        super(Q_network, self).__init__()
+        self.Q_network = nn.Sequential(
+            #Первый линейный слой обрабатывает входные данные состояния среды
+            nn.Linear(obs_size, 66),
+            nn.ReLU(),
+            #Второй линейный слой обрабатывает внутренние данные
+            nn.Linear(66, 60),
+            nn.ReLU(),
+            #Третий линейный слой обрабатывает данные для оценки действий
+            nn.Linear(60, n_actions)
+        )
+        #Применение к выходным данным функции Softmax
+        self.sm_layer = nn.Softmax(dim=1)
+    #Вначале данные x обрабатываются полносвязной сетью с функцией ReLU
+    #На выходе происходит обработка функцией Softmax
+    def forward(self, x):
+        q_network_out = self.Q_network(x)
+        sm_layer_out = self.sm_layer(q_network_out)
+        #Финальный выход нейронной сети
+        return sm_layer_out
 
 Experience = namedtuple(
     'Experience',
@@ -272,18 +298,20 @@ class ReplayMemoryPyTorch(object):
         return len(self.memory) >= batch_size
 
 class EpsilonGreedyStrategy():
-    end_of_train = False
-    def __init__(self, start, end, decay):
+
+    def __init__(self, start, end, decay, decay_steps):
         self.start = start
         self.end = end
         self.decay = decay
+        self.decay_steps = decay_steps
 
     def get_exploration_rate(self, current_step):
         epsilon = self.end + (self.start - self.end) * \
             math.exp(-1. * current_step * self.decay)
-        if abs(epsilon - self.end) < 0.01 and not self.end_of_train:
-            print('-- end of exploration --')
-            self.end_of_exploration = True
+        return epsilon
+
+    def get_exploration_rate2(self, current_step):
+        epsilon = max(self.end, self.start - (self.start - self.end) * current_step / self.decay_steps)
         return epsilon
 
 def plot(values, moving_avg_period):
