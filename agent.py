@@ -34,19 +34,20 @@ class Environment:
         return self.current_state is None
 
     def get_state_tensor(self):
-        return torch.tensor([self.vect_state[1:]], device=self.widget.agent.device)
+        return torch.tensor([self.vect_state[2:]], device=self.widget.agent.device)
+        #return torch.tensor([self.vect_state[1:]], device=self.widget.agent.device)
 
     def get_state(self):
-        return self.get_state_tensor()
+        # return self.get_state_tensor()
         # vect_state:
         # 0 - id, 1 - taps, 2 - nx, 3 - ny, 4 - ns, 5 - nr
-        # if self.just_starting() or self.done:
-        #     self.current_state = self.get_state_tensor()
-        #     return torch.zeros_like(self.current_state) #zero_state
-        # else:
-        #     s1 = self.current_state
-        #     self.current_state = self.get_state_tensor()
-        #     return self.current_state - s1
+        if self.just_starting() or self.done:
+            self.current_state = self.get_state_tensor()
+            return torch.zeros_like(self.current_state) #zero_state
+        else:
+            s1 = self.current_state
+            self.current_state = self.get_state_tensor()
+            return self.current_state - s1
 
     def get_actions(self):
         return self.action_space
@@ -64,8 +65,9 @@ class Environment:
         if self.last_reward.get(id, None) is not None:
             last_reward = self.last_reward[id].copy()
             self.last_reward[id] = cur_reward.copy()
+            penalty = self.app.sliders_reward[6].value
             for i in range(5):
-                cur_reward[i] = self.app.sliders_reward[i].value if last_reward[i] < cur_reward[i] else -1 if last_reward[i] > cur_reward[i] else 0
+                cur_reward[i] = self.app.sliders_reward[i].value if last_reward[i] < cur_reward[i] else penalty if last_reward[i] > cur_reward[i] else 0
         else:
             self.last_reward[id] = cur_reward.copy()
         return cur_reward[:4], cur_reward[4]
@@ -229,30 +231,22 @@ class DQN(nn.Module):
         t = F.relu(self.fc2(t))
         return self.out(t)
 
-#Определяем архитектуру нейронной сети
+
 class Q_network(nn.Module):
-    #На вход нейронная сеть получает состояние среды
-    #На выходе нейронная сеть возвращает оценку действий в виде Q-значений
     def __init__(self, obs_size, n_actions=8):
         super(Q_network, self).__init__()
         self.Q_network = nn.Sequential(
-            #Первый линейный слой обрабатывает входные данные состояния среды
             nn.Linear(obs_size, 66),
             nn.ReLU(),
-            #Второй линейный слой обрабатывает внутренние данные
             nn.Linear(66, 60),
             nn.ReLU(),
-            #Третий линейный слой обрабатывает данные для оценки действий
             nn.Linear(60, n_actions)
         )
-        #Применение к выходным данным функции Softmax
         self.sm_layer = nn.Softmax(dim=1)
-    #Вначале данные x обрабатываются полносвязной сетью с функцией ReLU
-    #На выходе происходит обработка функцией Softmax
+
     def forward(self, x):
         q_network_out = self.Q_network(x)
         sm_layer_out = self.sm_layer(q_network_out)
-        #Финальный выход нейронной сети
         return sm_layer_out
 
 Experience = namedtuple(

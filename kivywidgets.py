@@ -133,7 +133,7 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
     def toFixed(self,numObj, digits=0): return f"{numObj:.{digits}f}"
 
     def update_pos(self, *args):
-        if self.mode == 'MARL adapt':
+        if self.mode == 'DQN adapt':
             r = self.MARL_core()
             #self.change_pos_size(a)
             #self.app.total_reward += self.app.y_discount**self.app.rewards_count * r # DISCOUNTED REWARD 2
@@ -145,7 +145,7 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
             self.app.loss_data[int(self.id)-1] = self.agent.loss_data[-1]
             if self.env.is_done():
                 self.emulation = self.set_emulation(False)
-                self.app.stop_emulation_async('MARL adapt is stopped. End of episode!', 'Adapt',
+                self.app.stop_emulation_async('DQN adapt is stopped. End of episode!', 'Adapt',
                                               self.agent.total_reward)
                 #print(self.id, self.taps, self.nx, self.ny, self.ns, self.nr)
             self.children[0].text = f'{self.nx}, {self.ny}'
@@ -195,13 +195,13 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
     def change_pos_size(self, to=0, deltapos=1, deltascale=0.01):
         r = self.app.sliders_reward[5].value # reward for action
         if to==0 and self.x>0: self.x -= deltapos
-        elif to==1 and self.x+self.width<Window.width: self.x += deltapos
-        elif to==2 and self.y+self.height<Window.height: self.y += deltapos
+        elif to==1 and self.x+(self.width*self.scale)<Window.width: self.x += deltapos
+        elif to==2 and self.y+(self.height*self.scale)<Window.height: self.y += deltapos
         elif to==3 and self.y>0: self.y -= deltapos
         elif to==4 and self.scale<2.: self.scale += deltascale
         elif to==5 and self.scale>0.4: self.scale -= deltascale
         elif to==6: self.rotation -= 1 # and (self.rotation>265 or self.rotation==0.)
-        elif to==7: self.rotation += 1 # self.rotation<110
+        elif to==7: self.rotation += 1 # and self.rotation<110
         else: r = self.app.sliders_reward[6].value # penalty for inaction
         self.set_vect_state()
         return r

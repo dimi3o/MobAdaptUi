@@ -42,15 +42,15 @@ class MainApp(App):
     sliders_reward = []
     strategy = None
     #DQN hyperparameters
-    batch_size = 32 #256
+    batch_size = 20 #256
     gamma = y_discount
     eps_start = 1
     eps_end = 0.01
     eps_decay = 0.001
-    eps_decay_steps = 200
+    eps_decay_steps = 500
     target_update = 50
     TAU = 0.005 # TAU is the update rate of the target network
-    memory_size = 10000
+    memory_size = 1000
     lr = 0.01
     steps_learning = 0.5
 
@@ -58,11 +58,11 @@ class MainApp(App):
         super(MainApp, self).__init__(**kwargs)
         self.title = 'MARL Mobile User Interface v.'+__version__
         self.text_color = MyColors.get_textcolor(WhiteBackColor)
-        self.modes = ('Fly adapt', 'Size adapt', 'Rotate adapt', 'Fly+Size+Rotate adapt','MARL adapt', 'GAN adapt')
+        self.modes = ('Fly adapt', 'Size adapt', 'Rotate adapt', 'Fly+Size+Rotate adapt','DQN adapt', 'GAN adapt')
         self.cols_rows = ('1х1', '2х2', '3х3', '4х4', '5х5', '6х6', '8x5')
         self.objects = ('Apps', 'Foods', 'Widgets')
         self.kitchen = ('rus', 'eur', 'asia')
-        self.episodes = ('20', '200', '2000', '20000')
+        self.episodes = ('200', '2000', '20000', '200000')
         self.modeargs = ('train', 'test')
         self.r_modeargs = ('map', 'weights', 'stats')
 
@@ -97,7 +97,7 @@ class MainApp(App):
         self.root.add_widget(self.mainscreen_widgets)
 
         #FOOT PANEL
-        self.modespinner = Spinner(text="MARL adapt", values=self.modes, background_color=(0.127,0.854,0.561,1))
+        self.modespinner = Spinner(text="DQN adapt", values=self.modes, background_color=(0.127,0.854,0.561,1))
         self.adapt_btn = Button(text='ADAPT UI', size_hint_y=None, height='30dp', background_color=(1, 0, 0, 1), on_press=self.adapt_ui) #on_press=lambda null: self.show_popup('MARLMUI starting... '+self.modespinner.text, 'Info'))
         lbl = Label(text='Adaptation:', color=(0, 0, 1, 1)) #, size_hint_x=None, width='150dp')
         quit_btn = Button(text='QUIT', size_hint_y=None, height='30dp', background_color=(0.9, 0.9, 0.9, 1), on_press=lambda null: self.get_running_app().stop())
@@ -124,7 +124,7 @@ class MainApp(App):
         for i in range(7):
             param = 'nx' if i==0 else 'ny' if i==1 else 'ns' if i==2 else 'nr' if i==3 else 'nt' if i==4 else 'penalty+'if i==5 else 'penalty-'
             sl_label = Label(text=f'R{str(i+1)} ({param}):', color=(0, 0, 0, 1), size_hint_x=None, width='80dp')
-            value = 0.1 if i == 5 else 1 if i < 5 else -1
+            value = 0.01 if i == 5 else .95 if i == 4 else .15 if i == 3 else 0.55 if i < 5 else -.95
             slider = Widgets.get_random_widget('Slider', -1., 1., value, 0.01)
             labelcallback = lambda instance, value: self.OnSliderRewardChangeValue(cur_sl_label, value)
             slider.bind(value=labelcallback)
@@ -138,7 +138,8 @@ class MainApp(App):
         self.root3.add_widget(self.init_hor_boxlayout([Label(text='Kitchen:', color=(0, 0, 1, 1)),self.kitchenspinner]))
 
         # SETTINGS SCREEN, graph tab
-        self.root2.add_widget(Label(text='TOTAL REWARD', color=(0, 0, 0, 1)))
+        self.graph_widget_id = Spinner(text='0', values=[str(x) for x in range(40)], background_color=(0.327, 0.634, 0.161, 1))
+        self.root2.add_widget(self.init_hor_boxlayout([Label(text='REWARD/LOSS graph for widget id:', color=(0, 0, 0, 1)), self.graph_widget_id]))
         self.reward_graph = Widgets.get_graph_widget(.5, .5, 0, .1, 0, .1, 'Time, [sec]', WhiteBackColor)
         self.graph_layout = BoxLayout(orientation='horizontal', size_hint_y=None)
         self.reward_graph.height = self.graph_layout.height = Window.height*5/7
@@ -216,13 +217,13 @@ class MainApp(App):
             return
 
         self.AdaptUiOnOff = not self.AdaptUiOnOff
-        if m == 'MARL adapt' and self.AdaptUiOnOff == True:
+        if m == 'DQN adapt' and self.AdaptUiOnOff == True:
             self.total_reward = 0
             self.rewards_count = 0
         for s in self.FlyScatters:
             s.change_emulation()
             s.mode = self.modespinner.text
-            if m == 'MARL adapt' and s.emulation:
+            if m == 'DQN adapt' and s.emulation:
                 s.agent.total_reward = 0
                 s.agent.current_step = 0
                 s.app.strategy.end_of_exploration = False
@@ -240,7 +241,6 @@ class MainApp(App):
             print('- adapt ui stopped -')
 
     def stop_emulation_async(self,Text='Stop emulation!', Header='Adapt', par=0):
-        # if self.modespinner.text == 'MARL adapt': self.total_reward += int(par)
         if self.AdaptUiOnOff:
             self.AdaptUiOnOff = False
             Clock.unschedule(self._update_clock)
@@ -249,9 +249,10 @@ class MainApp(App):
             #print('- end of episode -')
 
     def _update_clock(self, dt):
-        #reward = self.reward_data[0]
-        reward = self.cumulative_reward_data[0]
-        loss = self.loss_data[0]
+        widget_id = int(self.graph_widget_id.text)
+        reward = self.reward_data[widget_id]
+        #reward = self.cumulative_reward_data[widget_id]
+        loss = self.loss_data[widget_id]
         #reward = self.total_reward
         #reward = self.total_reward / self.rewards_count
         self.reward_points.append((self.reward_graph.xmax, reward))
@@ -317,8 +318,8 @@ class MainApp(App):
                 s.set_vect_state()
                 s.agent = agent.Agent(s.app.strategy, s.env.num_actions_available())
                 s.memory = agent.ReplayMemoryPyTorch(self.memory_size)
-                s.policy_net = agent.get_nn_module(s.env.num_state_available()-1, s.agent.device)
-                s.target_net = agent.get_nn_module(s.env.num_state_available()-1, s.agent.device)
+                s.policy_net = agent.get_nn_module(s.env.num_state_available()-2, s.agent.device)
+                s.target_net = agent.get_nn_module(s.env.num_state_available()-2, s.agent.device)
                 s.target_net.load_state_dict(s.policy_net.state_dict())
                 #s.target_net.eval()
                 s.optimizer = agent.get_optimizer(s.policy_net, self.lr)
