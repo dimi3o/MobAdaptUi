@@ -38,16 +38,16 @@ class Environment:
         #return torch.tensor([self.vect_state[1:]], device=self.widget.agent.device)
 
     def get_state(self):
-        # return self.get_state_tensor()
+        return self.get_state_tensor()
         # vect_state:
         # 0 - id, 1 - taps, 2 - nx, 3 - ny, 4 - ns, 5 - nr
-        if self.just_starting() or self.done:
-            self.current_state = self.get_state_tensor()
-            return torch.zeros_like(self.current_state) #zero_state
-        else:
-            s1 = self.current_state
-            self.current_state = self.get_state_tensor()
-            return self.current_state - s1
+        # if self.just_starting() or self.done:
+        #     self.current_state = self.get_state_tensor()
+        #     return torch.zeros_like(self.current_state) #zero_state
+        # else:
+        #     s1 = self.current_state
+        #     self.current_state = self.get_state_tensor()
+        #     return self.current_state - s1
 
     def get_actions(self):
         return self.action_space
@@ -240,14 +240,21 @@ class Q_network(nn.Module):
     def __init__(self, obs_size, n_actions=8):
         super(Q_network, self).__init__()
         self.Q_network = nn.Sequential(
-            nn.Linear(obs_size, 66),
+            nn.Linear(obs_size, 128),
             nn.ReLU(),
-            nn.Linear(66, 60),
+            nn.Linear(128, 96),
             nn.ReLU(),
-            nn.Linear(60, n_actions)
+            nn.Linear(96, n_actions)
         )
         self.sm_layer = nn.Softmax(dim=1)
 
+    # self.Q_network = nn.Sequential(
+    #     nn.Linear(obs_size, 66),
+    #     nn.ReLU(),
+    #     nn.Linear(66, 60),
+    #     nn.ReLU(),
+    #     nn.Linear(60, n_actions)
+    # )
     def forward(self, x):
         q_network_out = self.Q_network(x)
         sm_layer_out = self.sm_layer(q_network_out)
