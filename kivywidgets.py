@@ -126,9 +126,10 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
     def tap_event(self):
         self.taps += 1
         self.children[0].text = f'taps: {self.taps}'
-        self.calc_norm_values()
-        r = self.MARL_core()
-        print(r)
+        self.set_vect_state()
+        self.env.get_rewards()
+        rewards = self.env.last_reward[int(self.id)-1][:-1]
+        print(sum(rewards)/len(rewards), rewards)
 
     def toFixed(self,numObj, digits=0): return f"{numObj:.{digits}f}"
 
@@ -148,7 +149,7 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
                 self.app.stop_emulation_async('DQN adapt is stopped. End of episode!', 'Adapt',
                                               self.agent.total_reward)
                 #print(self.id, self.taps, self.nx, self.ny, self.ns, self.nr)
-            self.children[0].text = f'{self.nx}, {self.ny}'
+            self.children[0].text = f'{self.toFixed(self.nx, 2)}, {self.toFixed(self.ny, 2)}'
         elif self.mode ==  'Rotate adapt' or self.mode == 'Fly+Size+Rotate adapt': self.rotation += random.choice([-1, 1])
         elif self.mode == 'Fly adapt' or self.mode == 'Fly+Size+Rotate adapt':
             self.x += self.deltaposxy*self.velocity[0]
@@ -186,10 +187,13 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
         self.vect_state = [int(self.id), int(self.taps), float(self.nx), float(self.ny), float(self.ns), float(self.nr)]
         self.env.vect_state = self.vect_state
 
+    def calc_norm_min_max(self, value, minv, maxv):
+        return (value - minv) / (maxv - minv)
+
     def calc_norm_values(self):
-        self.ns = self.toFixed(self.scale, 2)
-        self.nx, self.ny = self.toFixed(self.x / Window.width, 2), self.toFixed(self.y / Window.height, 2)
-        self.nr = self.toFixed(-m.sin(self.rotation / 180 * m.pi), 2)
+        self.ns = self.scale
+        self.nx, self.ny = self.x / Window.width, self.y / Window.height
+        self.nr = -m.sin(self.rotation / 180 * m.pi)
 
     # 0 - left, 1 - right, 2 - up, 3 - down, 4 - more, 5 - less
     def change_pos_size(self, to=0, deltapos=1, deltascale=0.01):

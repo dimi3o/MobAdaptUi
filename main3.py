@@ -29,7 +29,7 @@ __version__ = '0.0.3.3'
 class MainApp(App):
     sm = ScreenManager()
     FlyScatters = []
-    IdsPngs = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40]
+    IdsPngs = [j for j in range(1, 41)]
     AdaptUiOnOff = False
     y_discount = 0.999
     total_reward = 0
@@ -42,17 +42,17 @@ class MainApp(App):
     sliders_reward = []
     strategy = None
     #DQN hyperparameters
-    batch_size = 20 #256
+    batch_size = 32 #256
     gamma = y_discount
     eps_start = 1
     eps_end = 0.01
     eps_decay = 0.001
-    eps_decay_steps = 500
-    target_update = 50
+    eps_decay_steps = 1000
+    target_update = 100
     TAU = 0.005 # TAU is the update rate of the target network
-    memory_size = 1000
+    memory_size = 10000
     lr = 0.01
-    steps_learning = 0.5
+    steps_learning = 1
 
     def __init__(self, **kwargs):
         super(MainApp, self).__init__(**kwargs)
@@ -90,16 +90,11 @@ class MainApp(App):
             Color(0.827, 0.827, 0.827, 1.)
             self.rect_headpanel = Rectangle()
 
-        #MAIN CONTENT
-        self.mainscreen_widgets = BoxLayout(orientation='vertical', padding=0, spacing=0)
-        self.episodespinner = Spinner(text=self.episodes[1], values=self.episodes, size_hint_x=None, width='50dp', background_color=(0.225, 0.155, 0.564, 1))
-        self.mainscreen_rebuild_btn_click(self)
-        self.root.add_widget(self.mainscreen_widgets)
-
         #FOOT PANEL
+        self.episodespinner = Spinner(text=self.episodes[1], values=self.episodes, size_hint_x=None, width='50dp', background_color=(0.225, 0.155, 0.564, 1))
         self.modespinner = Spinner(text="DQN adapt", values=self.modes, background_color=(0.127,0.854,0.561,1))
         self.adapt_btn = Button(text='ADAPT UI', size_hint_y=None, height='30dp', background_color=(1, 0, 0, 1), on_press=self.adapt_ui) #on_press=lambda null: self.show_popup('MARLMUI starting... '+self.modespinner.text, 'Info'))
-        test_btn = Button(text='TEST UI', size_hint_y=None, height='30dp', background_color=(0, 0, 1, 1), on_press=lambda null: self.adapt_ui(self, False))
+        test_btn = Button(text='TEST UI', size_hint_y=None, height='30dp', size_hint_x=None, width='100dp', background_color=(0, 0, 1, 1), on_press=lambda null: self.adapt_ui(self, False))
         quit_btn = Button(text='QUIT', size_hint_y=None, height='30dp', background_color=(0.9, 0.9, 0.9, 1), on_press=lambda null: self.get_running_app().stop())
         sett_btn = Button(text='SETTINGS', size_hint_y=None, height='30dp', background_color=(0.2, 0.2, 0.2, 1), on_press=lambda null: self.to_screen('settings', 'left'))
         self.footpanel = self.ihbl([quit_btn, self.modespinner, self.episodespinner, self.adapt_btn, test_btn, sett_btn])
@@ -108,6 +103,16 @@ class MainApp(App):
         with self.footpanel.canvas.before:
             Color(0.827, 0.827, 0.827, 1.)
             self.rect_footpanel = Rectangle()
+
+        # MAIN CONTENT
+        self.mainscreen_widgets = BoxLayout(orientation='vertical', padding=0, spacing=0)
+        self.mainscreen_rebuild_btn_click(self)
+        self.root.add_widget(self.mainscreen_widgets)
+
+        # SWAP: main content is top layer and center of screen
+        swap = self.root.children[0]
+        self.root.children[0] = self.root.children[1]
+        self.root.children[1] = swap
 
         self.add_screen('mainscreen', self.root)
 
@@ -137,7 +142,7 @@ class MainApp(App):
         self.root3.add_widget(self.ihbl([Label(text='Kitchen:', color=(0, 0, 1, 1)),self.kitchenspinner]))
 
         # SETTINGS SCREEN, graph tab
-        self.graph_widget_id = Spinner(text='0', values=[str(x) for x in range(40)], background_color=(0.327, 0.634, 0.161, 1))
+        self.graph_widget_id = Spinner(text='1', values=[str(j) for j in range(1, 41)], background_color=(0.327, 0.634, 0.161, 1))
         self.root2.add_widget(self.ihbl([Label(text='REWARD/LOSS graph for widget id:', color=(0, 0, 0, 1)), self.graph_widget_id]))
         self.reward_graph = Widgets.get_graph_widget(.5, .5, 0, .1, 0, .1, 'Time, [sec]', WhiteBackColor)
         self.graph_layout = BoxLayout(orientation='horizontal', size_hint_y=None)
@@ -247,9 +252,9 @@ class MainApp(App):
             #print('- end of episode -')
 
     def _update_clock(self, dt):
-        widget_id = int(self.graph_widget_id.text)
-        reward = self.reward_data[widget_id]
-        #reward = self.cumulative_reward_data[widget_id]
+        widget_id = int(self.graph_widget_id.text)-1
+        #reward = self.reward_data[widget_id]
+        reward = self.cumulative_reward_data[widget_id]
         loss = self.loss_data[widget_id]
         #reward = self.total_reward
         #reward = self.total_reward / self.rewards_count
@@ -263,7 +268,7 @@ class MainApp(App):
 
     def expand_graph_axes(self, graph, new_ymax=1.):
         if graph.ymax < new_ymax: graph.ymax = new_ymax*1.2
-        elif graph.ymin > new_ymax: graph.ymin = new_ymax*0.8
+        elif graph.ymin > new_ymax: graph.ymin = new_ymax*0.8 if new_ymax>0 else new_ymax*1.2
         if abs(new_ymax) > graph.y_ticks_major * 20: graph.y_ticks_major *= 4
         if graph.xmax > graph.x_ticks_major * 20: graph.x_ticks_major *= 2
 
