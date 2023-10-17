@@ -199,8 +199,8 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
     def change_pos_size(self, to=0, deltapos=1, deltascale=0.01):
         r = self.app.sliders_reward[5].value # reward for action
         if to==0 and self.x>0: self.x -= deltapos
-        elif to==1 and self.x+(self.width*self.scale)<Window.width: self.x += deltapos
-        elif to==2 and self.y+(self.height*self.scale)<Window.height: self.y += deltapos
+        elif to==1 and self.x+((self.width//2)*self.scale)<Window.width: self.x += deltapos
+        elif to==2 and self.y+((self.height*1.2)*self.scale)<Window.height: self.y += deltapos
         elif to==3 and self.y>0: self.y -= deltapos
         elif to==4 and self.scale<2.: self.scale += deltascale
         elif to==5 and self.scale>0.4: self.scale -= deltascale
