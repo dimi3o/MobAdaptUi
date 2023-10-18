@@ -44,15 +44,15 @@ class MainApp(App):
     sliders_reward = []
     strategy = None
     #DQN hyperparameters
-    batch_size = 20 #256
+    batch_size = 32 #256
     gamma = y_discount
     eps_start = 1
     eps_end = 0.01
     eps_decay = 0.001
     eps_decay_steps = 500
-    target_update = 50
+    target_update = 100
     TAU = 0.005 # TAU is the update rate of the target network
-    memory_size = 1000
+    memory_size = 10000
     lr = 0.01
     steps_learning = 1
 
@@ -255,8 +255,8 @@ class MainApp(App):
 
     def _update_clock(self, dt):
         widget_id = int(self.graph_widget_id.text)-1
-        #reward = self.reward_data[widget_id]
-        reward = self.cumulative_reward_data[widget_id]
+        reward = self.reward_data[widget_id]
+        # reward = self.cumulative_reward_data[widget_id]
         #reward = self.m_loss_data[widget_id]
         loss = self.loss_data[widget_id]
         #reward = self.total_reward

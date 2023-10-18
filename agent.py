@@ -108,7 +108,6 @@ class Environment:
 
 class Agent:
     loss_data = [0]
-    reward_data = [0]
 
     def __init__(self, strategy, num_actions, device=None):
         self.current_step = 0
@@ -169,17 +168,17 @@ class Agent:
             env.steps_learning -= 1
             #if env.steps_learning<=0: print('-- end of steps learning --')
 
-        self.reward_data.append(reward.data.item())
+        # self.reward_data.append(reward.data.item())
 
         # actions = env.get_actions()
         # action = random.choice(actions)
         # reward, t = env.take_action(action)
         #print(t)
-        self.total_reward += r
-        return action, r
+        return r
 
 
 class Agent2:
+    loss_data = [0]
     total_loss = [0]
     m_loss = [0]
 
@@ -300,10 +299,10 @@ class Agent2:
             # loss_t = self.objective(cl, tl)
 
             # Сохраняем данные для графиков
+            self.loss_data.append(loss_t.data.item())
             loss_n = loss_t.data.numpy()
             self.total_loss.append(loss_n)
             self.m_loss.append(np.mean(self.total_loss[-1000:]))
-            l = float(loss_t.data.item())
 
             # Выполняем обратное распространение ошибки
             loss_t.backward()
@@ -316,7 +315,7 @@ class Agent2:
             env.steps_learning -= 1
 
         # Собираем данные для графиков
-        return reward, l
+        return reward
 
 
 class QValues():
@@ -376,6 +375,7 @@ class DQN(nn.Module):
         self.fc1 = nn.Linear(in_features=state_len, out_features=24)
         self.fc2 = nn.Linear(in_features=24, out_features=32)
         self.out = nn.Linear(in_features=32, out_features=8)
+        self.sm_layer = nn.Softmax(dim=1)
         # self.fc1 = nn.Linear(in_features=state_len, out_features=40)
         # self.fc2 = nn.Linear(in_features=40, out_features=64)
         # self.out = nn.Linear(in_features=64, out_features=8)
@@ -384,7 +384,7 @@ class DQN(nn.Module):
         # t = t.flatten(start_dim=1) #for image processing
         t = F.relu(self.fc1(t))
         t = F.relu(self.fc2(t))
-        return self.out(t)
+        return self.sm_layer(self.out(t))
 
 
 class Q_network(nn.Module):
