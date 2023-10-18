@@ -1,6 +1,7 @@
 import random
 import torch
 import agent
+from collections import deque
 from dqnvianumpy.q_learning import train_main
 from dqnvianumpy.q_learning import test_main
 from colors import MyColors
@@ -37,6 +38,7 @@ class MainApp(App):
     reward_data = [0. for i in range(40)]
     cumulative_reward_data = [0. for i in range(40)]
     loss_data = [0. for i in range(40)]
+    m_loss_data = [0. for i in range(40)]
     target_ui_vect = [[0. for j in range(4)] for i in range(40)]
     current_ui_vect = [[0. for j in range(4)] for i in range(40)]
     sliders_reward = []
@@ -254,7 +256,8 @@ class MainApp(App):
     def _update_clock(self, dt):
         widget_id = int(self.graph_widget_id.text)-1
         #reward = self.reward_data[widget_id]
-        reward = self.cumulative_reward_data[widget_id]
+        #reward = self.cumulative_reward_data[widget_id]
+        reward = self.m_loss_data[widget_id]
         loss = self.loss_data[widget_id]
         #reward = self.total_reward
         #reward = self.total_reward / self.rewards_count
@@ -267,6 +270,8 @@ class MainApp(App):
         self.expand_graph_axes(self.reward_graph, new_ymax=loss)
 
     def expand_graph_axes(self, graph, new_ymax=1.):
+        if new_ymax==0: return
+        new_ymax = float(new_ymax)
         if graph.ymax < new_ymax: graph.ymax = new_ymax*1.2
         elif graph.ymin > new_ymax: graph.ymin = new_ymax*0.8 if new_ymax>0 else new_ymax*1.2
         if abs(new_ymax) > graph.y_ticks_major * 20: graph.y_ticks_major *= 4
@@ -313,20 +318,7 @@ class MainApp(App):
             for j in range(cols):
                 s = FlyScatterV3(do_rotation=True, do_scale=True, auto_bring_to_front=False, do_collide_after_children=False)
                 s.app = self
-                #### DQN INIT start
-                s.app.strategy = agent.EpsilonGreedyStrategy(self.eps_start, self.eps_end, self.eps_decay, self.eps_decay_steps)
-                steps_left = int(self.episodespinner.text)
-                steps_learning = int((int(self.episodespinner.text) -self.batch_size ) * self.steps_learning)
-                s.env = agent.Environment(steps_left, steps_learning, self, s)
-                s.set_vect_state()
-                s.agent = agent.Agent(s.app.strategy, s.env.num_actions_available())
-                s.memory = agent.ReplayMemoryPyTorch(self.memory_size)
-                s.policy_net = agent.get_nn_module(s.env.num_state_available()-2, s.agent.device)
-                s.target_net = agent.get_nn_module(s.env.num_state_available()-2, s.agent.device)
-                s.target_net.load_state_dict(s.policy_net.state_dict())
-                #s.target_net.eval()
-                s.optimizer = agent.get_optimizer(s.policy_net, self.lr)
-                #### DQN INIT end
+                self.DQN_init2(s) #### DQN INIT
                 hor.add_widget(s)
                 s.id = ids = self.IdsPngs[i*cols+j]
                 s.grid_rect = Widgets.get_random_widget('LineRectangle', 0, 0, Window.width // cols, Window.height // (rows + 1), f'S{i*cols+j}')
@@ -344,6 +336,37 @@ class MainApp(App):
                 self.FlyScatters.append(s)
 
             self.mainscreen_widgets.add_widget(hor)
+
+    def DQN_init(self, s):
+        #### DQN INIT start
+        s.app.strategy = agent.EpsilonGreedyStrategy(self.eps_start, self.eps_end, self.eps_decay, self.eps_decay_steps)
+        steps_left = int(self.episodespinner.text)
+        steps_learning = int((int(self.episodespinner.text) - self.batch_size) * self.steps_learning)
+        s.env = agent.Environment(steps_left, steps_learning, self, s)
+        s.set_vect_state()
+        s.agent = agent.Agent(s.app.strategy, s.env.num_actions_available())
+        s.memory = agent.ReplayMemoryPyTorch(self.memory_size)
+        s.policy_net = agent.get_nn_module(s.env.num_state_available() - 2, s.agent.device)
+        s.target_net = agent.get_nn_module(s.env.num_state_available() - 2, s.agent.device)
+        s.target_net.load_state_dict(s.policy_net.state_dict())
+        # s.target_net.eval()
+        s.optimizer = agent.get_optimizer_Adam(s.policy_net, self.lr)
+        #### DQN INIT end
+
+    def DQN_init2(self, s):
+        #### DQN INIT start
+        s.app.strategy = agent.EpsilonGreedyStrategy(self.eps_start, self.eps_end, self.eps_decay, self.eps_decay_steps)
+        steps_left = int(self.episodespinner.text)
+        steps_learning = int((int(self.episodespinner.text) - self.batch_size) * self.steps_learning)
+        s.env = agent.Environment(steps_left, steps_learning, self, s)
+        s.set_vect_state()
+        memory = agent.ReplayMemoryPyTorch(self.memory_size)
+        s.agent = agent.Agent2(s.app.strategy, memory, s.env.num_actions_available())
+        s.experience_buffer = deque(maxlen=self.memory_size)
+        s.policy_net = agent.get_nn_module2(s.env.num_state_available() - 2, s.agent.device)
+        s.target_net = agent.get_nn_module2(s.env.num_state_available() - 2, s.agent.device)
+        s.optimizer = agent.get_optimizer_Adam(s.policy_net, self.lr)
+        #### DQN INIT end
 
     def ihbl(self, widjets, my_height=True):
         hor = BoxLayout(orientation='horizontal', padding=0, spacing=0)

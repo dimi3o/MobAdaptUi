@@ -96,6 +96,7 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
     mode = 'Fly adapt'
     app = None
     memory = None
+    experience_buffer = None # Agent2
     agent = None
     policy_net = None
     target_net = None
@@ -135,15 +136,13 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
 
     def update_pos(self, *args):
         if self.mode == 'DQN adapt':
-            r = self.MARL_core()
-            #self.change_pos_size(a)
-            #self.app.total_reward += self.app.y_discount**self.app.rewards_count * r # DISCOUNTED REWARD 2
-            #self.app.total_reward = r # SINGLE AGENT REWARD
-            #self.app.total_reward += r  # SUMM REWARD
+            #r = self.MARL_core()
+            r, l = self.MARL_core2()
             self.app.rewards_count += 1
-            self.app.reward_data[int(self.id)-1] = self.agent.reward_data[-1]
-            self.app.cumulative_reward_data[int(self.id) - 1] += self.agent.reward_data[-1]
-            self.app.loss_data[int(self.id)-1] = self.agent.loss_data[-1]
+            self.app.reward_data[int(self.id)-1] = r #self.agent.reward_data[-1]
+            self.app.cumulative_reward_data[int(self.id) - 1] += r #self.agent.reward_data[-1]
+            self.app.loss_data[int(self.id)-1] = l #self.agent.loss_data[-1]
+            self.app.m_loss_data[int(self.id)-1] = self.agent.m_loss[-1]
             if self.env.is_done():
                 self.emulation = self.set_emulation(False)
                 self.app.stop_emulation_async('DQN adapt is stopped. End of episode!', 'Adapt',
@@ -181,6 +180,15 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
             self.target_net.load_state_dict(self.policy_net.state_dict())
             # print('--- target_net update ---')
         return r
+
+    def MARL_core2(self):
+        r, l = self.agent.step(self.env)
+
+        # Синхронизируем веса основной и целевой нейронной сети каждые target_update шагов
+        if self.env.steps_left % self.app.target_update == 0:
+            self.target_net.load_state_dict(self.policy_net.state_dict())
+
+        return r, l
 
     def set_vect_state(self):
         self.calc_norm_values()

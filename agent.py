@@ -33,6 +33,9 @@ class Environment:
     def just_starting(self):
         return self.current_state is None
 
+    def get_state_tensor2(self):
+        return torch.FloatTensor([self.vect_state[2:]], device=self.widget.agent.device)
+
     def get_state_tensor(self):
         return torch.tensor([self.vect_state[2:]], device=self.widget.agent.device)
         #return torch.tensor([self.vect_state[1:]], device=self.widget.agent.device)
@@ -48,6 +51,9 @@ class Environment:
         #     s1 = self.current_state
         #     self.current_state = self.get_state_tensor()
         #     return self.current_state - s1
+
+    def get_obs_agent(self): # Agent2
+        return self.vect_state[2:]
 
     def get_actions(self):
         return self.action_space
@@ -172,6 +178,145 @@ class Agent:
         self.total_reward += r
         return action, r
 
+
+class Agent2:
+    total_loss = [0]
+    m_loss = [0]
+
+    def __init__(self, strategy, memory, num_actions, device=None):
+        self.current_step = 0
+        self.strategy = strategy
+        self.memory = memory
+        self.qofa_out = num_actions # Определяем выходной размер нейронной сети
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') if not device else device
+        self.total_reward = 0.0
+        self.objective = nn.SmoothL1Loss() # Huber loss
+        #self.objective = nn.MSELoss()
+
+    # Выбираем возможное действие с максимальным Q-значением в зависимости от эпсилон
+    def select_actionFox(self, action_probabilities, avail_actions_ind):
+        epsilon = self.strategy.get_exploration_rate2(self.current_step)
+        # Исследуем пространство действий
+        if np.random.rand() < epsilon:
+            return torch.tensor([np.random.choice(avail_actions_ind)]).to(self.device)
+        else:
+            # Находим возможное действие:
+            # Проверяем есть ли действие в доступных действиях агента
+            for ia in action_probabilities:
+                action = np.argmax(action_probabilities)
+                if action in avail_actions_ind:
+                    #return action
+                    return torch.tensor([action]).to(self.device)
+                    # with torch.no_grad():  # exploit
+                    #     # return torch.tensor([policy_net(state).argmax(dim=1)], device=self.device)
+                    #     return torch.tensor([policy_net(state).max(1)[1].view(1, 1)], device=self.device)
+                else:
+                    action_probabilities[action] = 0
+
+    # Создаем минивыборку определенного объема из буфера воспроизведения
+    def sample_from_expbuf(self, experience_buffer, batch_size):
+        # Функция возвращает случайную последовательность заданной длины из его элементов.
+        perm_batch = np.random.permutation(len(experience_buffer))[:batch_size]
+        # Минивыборка
+        experience = np.array(experience_buffer)[perm_batch]
+        # Возвращаем значения минивыборки по частям
+        return experience[:, 0], experience[:, 1], experience[:, 2], experience[:, 3]
+
+    def step(self, env):
+        # Получаем состояние среды для независимого агента IQL
+        obs_agentT = env.get_state_tensor2() #Храним историю состояний среды один шаг
+        #obs_agentT = torch.FloatTensor([self.obs_agent], device=self.device)
+
+        # Передаем состояние среды в основную нейронную сеть
+        # и получаем Q-значения для каждого действия
+        #action_probabilitiesT = env.widget.policy_net(obs_agentT).to("cpu")
+        with torch.no_grad():
+            action_probabilitiesT = env.widget.policy_net(obs_agentT)
+            action_probabilitiesT = action_probabilitiesT.to(self.device)
+        # Конвертируем данные в numpy
+        action_probabilities = action_probabilitiesT.data.numpy()[0]
+
+        avail_actions_ind = env.action_space
+        # Выбираем возможное действие агента с учетом
+        # максимального Q-значения и параметра эпсилон
+        action = self.select_actionFox(action_probabilities, avail_actions_ind)
+
+        # Передаем действия агентов в среду, получаем награду
+        reward, rewardT = env.take_action(action)
+
+        # Получаем новое состояние среды
+        obs_agent_nextT = env.get_state_tensor2()
+
+        # Сохраняем переход в буфере воспроизведения для каждого агента
+        #env.widget.experience_buffer.append([self.obs_agent, action, reward_scalar, obs_agent_next])
+        self.memory.push(Experience(obs_agentT, action, rewardT, obs_agent_nextT))
+
+        l = 0.
+
+        # Если буфер воспроизведения наполнен, начинаем обучать сеть
+        if self.memory.can_provide_sample(env.app.batch_size) and env.steps_learning>0:
+            # Получаем минивыборку из буфера воспроизведения
+            #exp_obs, exp_act, exp_rew, exp_next_obs = self.sample_from_expbuf(env.widget.experience_buffer, env.app.batch_size)
+            experiences = self.memory.sample(env.app.batch_size)
+            # Конвертируем данные состояния в тензоры
+            obs_agentT, actions, rewards, obs_agentT_next = extract_tensors(experiences)
+            #obs_agentT = torch.FloatTensor([exp_obs]).to(self.device)
+
+            # Подаем минивыборку в основную нейронную сеть чтобы получить Q(s,a)
+            action_probabilitiesT = env.widget.policy_net(obs_agentT)
+            action_probabilitiesT = action_probabilitiesT.to(self.device)
+            #action_probabilities = action_probabilitiesT.data.numpy()[0]
+
+            # Конвертируем данные след.состояния в тензор
+            #obs_agentT_next = torch.FloatTensor([exp_next_obs]).to(self.device)
+
+            # Подаем минивыборку в целевую нейронную сеть чтобы получить Q(s,a)
+            action_probabilitiesT_next = env.widget.target_net(obs_agentT_next)
+            action_probabilitiesT_next = action_probabilitiesT_next.to(self.device)
+            action_probabilities_next = action_probabilitiesT_next.data.numpy()[0]
+
+            # Вычисляем целевое значение y
+            y_batch = rewards + env.app.gamma * np.max(action_probabilities_next, axis=-1)
+            #target_q_values = (action_probabilitiesT_next * env.app.gamma) + rewards
+
+            # Переформатируем y_batch размером batch_size
+            y_batchT = y_batch.unsqueeze(1).repeat(1, self.qofa_out)
+            # y_batch64 = np.zeros([env.app.batch_size, self.qofa_out])
+            # for i in range(env.app.batch_size):
+            #     for j in range(self.qofa_out):
+            #         y_batch64[i][j] = y_batch[i]
+            # # Конвертируем данные в тензор
+            # #y_batchT = torch.FloatTensor([y_batch64])
+            # y_batchT = torch.from_numpy(y_batch64)
+
+            # Обнуляем градиенты
+            env.widget.optimizer.zero_grad()
+
+            # Вычисляем функцию потерь
+            loss_t = self.objective(action_probabilitiesT, y_batchT)
+            # cl = action_probabilitiesT.max(dim=1)[0].detach().unsqueeze(1)
+            # tl = target_q_values.unsqueeze(1)
+            # loss_t = self.objective(cl, tl)
+
+            # Сохраняем данные для графиков
+            loss_n = loss_t.data.numpy()
+            self.total_loss.append(loss_n)
+            self.m_loss.append(np.mean(self.total_loss[-1000:]))
+            l = float(loss_t.data.item())
+
+            # Выполняем обратное распространение ошибки
+            loss_t.backward()
+
+            # Выполняем оптимизацию нейронных сетей
+            env.widget.optimizer.step()
+            torch.nn.utils.clip_grad_value_(env.widget.policy_net.parameters(), 100)
+            # Подсчет количества шагов обучения
+            env.steps_learning -= 1
+
+        # Собираем данные для графиков
+        return reward, l
+
+
 class QValues():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -210,13 +355,17 @@ def extract_tensors(experiences):
     t4 = torch.cat(batch.next_state)
     return (t1, t2, t3, t4)
 
-def get_optimizer(policy_net, lr):
-    #return optim.Adam(params=policy_net.parameters(), lr=lr)
+def get_optimizer_AdamW(policy_net, lr):
     return optim.AdamW(params=policy_net.parameters(), lr=lr, amsgrad=True)
 
+def get_optimizer_Adam(policy_net, lr):
+    return optim.Adam(params=policy_net.parameters(), lr=lr)
+
 def get_nn_module(input_length, device):
+    return DQN(input_length).to(device)
+
+def get_nn_module2(input_length, device):
     return Q_network(input_length).to(device)
-    #return DQN(input_length).to(device)
 
 class DQN(nn.Module):
     def __init__(self, state_len):
@@ -240,21 +389,14 @@ class Q_network(nn.Module):
     def __init__(self, obs_size, n_actions=8):
         super(Q_network, self).__init__()
         self.Q_network = nn.Sequential(
-            nn.Linear(obs_size, 128),
+            nn.Linear(obs_size, 66),
             nn.ReLU(),
-            nn.Linear(128, 96),
+            nn.Linear(66, 60),
             nn.ReLU(),
-            nn.Linear(96, n_actions)
+            nn.Linear(60, n_actions)
         )
         self.sm_layer = nn.Softmax(dim=1)
 
-    # self.Q_network = nn.Sequential(
-    #     nn.Linear(obs_size, 66),
-    #     nn.ReLU(),
-    #     nn.Linear(66, 60),
-    #     nn.ReLU(),
-    #     nn.Linear(60, n_actions)
-    # )
     def forward(self, x):
         q_network_out = self.Q_network(x)
         sm_layer_out = self.sm_layer(q_network_out)
@@ -262,7 +404,7 @@ class Q_network(nn.Module):
 
 Experience = namedtuple(
     'Experience',
-    ('state', 'action', 'next_state', 'reward')
+    ('state', 'action', 'reward', 'next_state')
 )
 
 
