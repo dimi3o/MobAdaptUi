@@ -44,15 +44,15 @@ class MainApp(App):
     sliders_reward = []
     strategy = None
     #DQN hyperparameters
-    batch_size = 32 #256
+    batch_size = 20 #256
     gamma = y_discount
     eps_start = 1
     eps_end = 0.01
     eps_decay = 0.001
-    eps_decay_steps = 1000
-    target_update = 100
+    eps_decay_steps = 500
+    target_update = 50
     TAU = 0.005 # TAU is the update rate of the target network
-    memory_size = 10000
+    memory_size = 1000
     lr = 0.01
     steps_learning = 1
 
@@ -256,8 +256,8 @@ class MainApp(App):
     def _update_clock(self, dt):
         widget_id = int(self.graph_widget_id.text)-1
         #reward = self.reward_data[widget_id]
-        #reward = self.cumulative_reward_data[widget_id]
-        reward = self.m_loss_data[widget_id]
+        reward = self.cumulative_reward_data[widget_id]
+        #reward = self.m_loss_data[widget_id]
         loss = self.loss_data[widget_id]
         #reward = self.total_reward
         #reward = self.total_reward / self.rewards_count
@@ -349,7 +349,7 @@ class MainApp(App):
         s.policy_net = agent.get_nn_module(s.env.num_state_available() - 2, s.agent.device)
         s.target_net = agent.get_nn_module(s.env.num_state_available() - 2, s.agent.device)
         s.target_net.load_state_dict(s.policy_net.state_dict())
-        # s.target_net.eval()
+        s.target_net.eval()
         s.optimizer = agent.get_optimizer_Adam(s.policy_net, self.lr)
         #### DQN INIT end
 
@@ -365,7 +365,8 @@ class MainApp(App):
         s.experience_buffer = deque(maxlen=self.memory_size)
         s.policy_net = agent.get_nn_module2(s.env.num_state_available() - 2, s.agent.device)
         s.target_net = agent.get_nn_module2(s.env.num_state_available() - 2, s.agent.device)
-        s.optimizer = agent.get_optimizer_Adam(s.policy_net, self.lr)
+        s.target_net.eval()
+        s.optimizer = agent.get_optimizer_AdamW(s.policy_net, self.lr)
         #### DQN INIT end
 
     def ihbl(self, widjets, my_height=True):

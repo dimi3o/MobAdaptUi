@@ -141,7 +141,7 @@ class Agent:
         action = self.select_action(state, env.widget.policy_net)
         r, reward = env.take_action(action)
         next_state = env.get_state()
-        env.widget.memory.push(Experience(state, action, next_state, reward))
+        env.widget.memory.push(Experience(state, action, reward, next_state))
         # state = next_state
 
         if env.widget.memory.can_provide_sample(env.app.batch_size) and env.steps_learning>0:
@@ -196,6 +196,7 @@ class Agent2:
     # Выбираем возможное действие с максимальным Q-значением в зависимости от эпсилон
     def select_actionFox(self, action_probabilities, avail_actions_ind):
         epsilon = self.strategy.get_exploration_rate2(self.current_step)
+        self.current_step += 1
         # Исследуем пространство действий
         if np.random.rand() < epsilon:
             return torch.tensor([np.random.choice(avail_actions_ind)]).to(self.device)
@@ -307,9 +308,10 @@ class Agent2:
             # Выполняем обратное распространение ошибки
             loss_t.backward()
 
+            torch.nn.utils.clip_grad_value_(env.widget.policy_net.parameters(), 100)
             # Выполняем оптимизацию нейронных сетей
             env.widget.optimizer.step()
-            torch.nn.utils.clip_grad_value_(env.widget.policy_net.parameters(), 100)
+
             # Подсчет количества шагов обучения
             env.steps_learning -= 1
 
@@ -389,11 +391,11 @@ class Q_network(nn.Module):
     def __init__(self, obs_size, n_actions=8):
         super(Q_network, self).__init__()
         self.Q_network = nn.Sequential(
-            nn.Linear(obs_size, 66),
+            nn.Linear(obs_size, 64),
             nn.ReLU(),
-            nn.Linear(66, 60),
+            nn.Linear(64, 128),
             nn.ReLU(),
-            nn.Linear(60, n_actions)
+            nn.Linear(128, n_actions)
         )
         self.sm_layer = nn.Softmax(dim=1)
 
