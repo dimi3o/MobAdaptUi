@@ -236,7 +236,7 @@ class Agent2:
         # Конвертируем данные в numpy
         action_probabilities = action_probabilitiesT.data.numpy()[0]
 
-        avail_actions_ind = env.action_space
+        avail_actions_ind = env.widget.available_actions()
         # Выбираем возможное действие агента с учетом
         # максимального Q-значения и параметра эпсилон
         action = self.select_actionFox(action_probabilities, avail_actions_ind)

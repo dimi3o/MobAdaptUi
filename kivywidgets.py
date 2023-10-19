@@ -197,18 +197,39 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
     # 0 - left, 1 - right, 2 - up, 3 - down, 4 - more, 5 - less
     def change_pos_size(self, to=0, deltapos=1, deltascale=0.01):
         r = self.app.sliders_reward[5].value # reward for action
-        if to==0 and self.x>0: self.x -= deltapos
-        elif to==1 and self.x+((self.width//2)*self.scale)<Window.width: self.x += deltapos
-        elif to==2 and self.y+((self.height*1.2)*self.scale)<Window.height: self.y += deltapos
-        elif to==3 and self.y>0: self.y -= deltapos
-        elif to==4 and self.scale<2.: self.scale += deltascale
-        elif to==5 and self.scale>0.4: self.scale -= deltascale
+        # if to==0 and self.x>0: self.x -= deltapos
+        # elif to==1 and self.x+((self.width//2)*self.scale)<Window.width: self.x += deltapos
+        # elif to==2 and self.y+((self.height*1.5)*self.scale)<Window.height: self.y += deltapos
+        # elif to==3 and self.y>0: self.y -= deltapos
+        # elif to==4 and self.scale<2.: self.scale += deltascale
+        # elif to==5 and self.scale>0.4: self.scale -= deltascale
+        # elif to==6: self.rotation -= 1 # and (self.rotation>265 or self.rotation==0.)
+        # elif to==7: self.rotation += 1 # and self.rotation<110
+        if to==0: self.x -= deltapos
+        elif to==1: self.x += deltapos
+        elif to==2: self.y += deltapos
+        elif to==3: self.y -= deltapos
+        elif to==4: self.scale += deltascale
+        elif to==5: self.scale -= deltascale
         elif to==6: self.rotation -= 1 # and (self.rotation>265 or self.rotation==0.)
         elif to==7: self.rotation += 1 # and self.rotation<110
         else: r = self.app.sliders_reward[6].value # penalty for inaction
         self.set_vect_state()
         return r
 
+    def available_actions(self):
+        a = []
+        if self.x>0: a.append(0)
+        if self.x+((self.width//2)*self.scale)<Window.width: a.append(1)
+        if self.y+((self.height*1.5)*self.scale)<Window.height: a.append(2)
+        if self.y>0: a.append(3)
+        if self.scale<2.: a.append(4)
+        if self.scale>0.4: a.append(5)
+        if self.rotation==0.: a.append(6); a.append(7)
+        else:
+            if self.rotation<150 or self.rotation<230: a.append(7)
+            if self.rotation>230 or self.rotation>150: a.append(6)
+        return a
 
     def change_emulation(self):
         self.emulation = self.set_emulation(True) if not(self.emulation) else self.set_emulation(False)

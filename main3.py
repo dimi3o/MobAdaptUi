@@ -47,9 +47,9 @@ class MainApp(App):
     batch_size = 32 #256
     gamma = y_discount
     eps_start = 1
-    eps_end = 0.01
+    eps_end = 0.1
     eps_decay = 0.001
-    eps_decay_steps = 500
+    eps_decay_steps = 1000
     target_update = 100
     TAU = 0.005 # TAU is the update rate of the target network
     memory_size = 10000
@@ -188,34 +188,6 @@ class MainApp(App):
 
     def OnSliderRewardChangeValue(self, label, value): label.text=f"{value:.{2}f}"
 
-    # Need Asynchronous app
-    # https://kivy.org/doc/stable/api-kivy.app.html#module-kivy.app
-    def test_dqn(self, instance):
-        #self.cclear()
-        if self.dqnmodespinner.text == "train":
-            train_main(self.dqnr_modespinner.text, self)
-        else:
-            test_main('model.pkl', self)
-
-    def cwriteline(self, string = ''):
-        self.console.text += '\n'+string
-
-    def cwrite(self, string = ''):
-        self.console.text += string
-
-    def cclear(self):
-            self.console.text = ''
-
-    def add_screen(self, name, widget):
-        scr = Screen(name=name)
-        scr.add_widget(widget)
-        self.sm.add_widget(scr)
-
-    def to_screen(self, namescreen='mainscreen', direction='right'):
-        self.sm.transition.direction = direction
-        self.sm.current = namescreen
-        #if namescreen == 'settings': print(self.current_ui_vect)
-
     def adapt_ui(self, instance, learning=True):
         m = self.modespinner.text
         if m == 'GAN adapt':
@@ -255,8 +227,8 @@ class MainApp(App):
 
     def _update_clock(self, dt):
         widget_id = int(self.graph_widget_id.text)-1
-        reward = self.reward_data[widget_id]
-        # reward = self.cumulative_reward_data[widget_id]
+        #reward = self.reward_data[widget_id]
+        reward = self.cumulative_reward_data[widget_id]
         #reward = self.m_loss_data[widget_id]
         loss = self.loss_data[widget_id]
         #reward = self.total_reward
@@ -269,38 +241,7 @@ class MainApp(App):
         self.expand_graph_axes(self.reward_graph, new_ymax=reward)
         self.expand_graph_axes(self.reward_graph, new_ymax=loss)
 
-    def expand_graph_axes(self, graph, new_ymax=1.):
-        if new_ymax==0: return
-        new_ymax = float(new_ymax)
-        if graph.ymax < new_ymax: graph.ymax = new_ymax*1.2
-        elif graph.ymin > new_ymax: graph.ymin = new_ymax*0.8 if new_ymax>0 else new_ymax*1.2
-        if abs(new_ymax) > graph.y_ticks_major * 20: graph.y_ticks_major *= 4
-        if graph.xmax > graph.x_ticks_major * 20: graph.x_ticks_major *= 2
 
-    def reset_reward_graph(self):
-        try:
-            self.reward_graph.remove_plot(self.reward_plot)
-            self.reward_graph.remove_plot(self.loss_plot)
-        except: pass
-        self.reward_plot = LinePlot(line_width=2, color=[1, 0, 0, 1])
-        self.loss_plot = LinePlot(line_width=2, color=[0, 0, 1, 1])
-        self.reward_graph.add_plot(self.reward_plot)
-        self.reward_graph.add_plot(self.loss_plot)
-        self.reward_points = []
-        self.loss_points = []
-        self.reward_graph.x_ticks_major = .5; self.reward_graph.y_ticks_major = .1
-        self.reward_graph.xmin = 0; self.reward_graph.xmax = .1; self.reward_graph.ymin = 0; self.reward_graph.ymax = .1
-
-    def do_current_ui_vect(self, vect):
-        self.current_ui_vect[vect[0]-1] = [vect[2], vect[3], vect[4], vect[5]]
-
-    def target_ui_selected_value(self, spinner, text):
-        self.target_ui_vect = Widgets.target_ui(text)
-        print(self.target_ui_vect[1][1])
-        self.targetUiVect.text = str(self.target_ui_vect).replace(' ','')
-
-    def colrowspinner_selected_value(self, spinner, text):
-        self.mainscreen_rebuild_btn_click(self)
 
     def mainscreen_rebuild_btn_click(self, instance):
         self.mainscreen_widgets.clear_widgets()
@@ -368,6 +309,67 @@ class MainApp(App):
         s.target_net.eval()
         s.optimizer = agent.get_optimizer_AdamW(s.policy_net, self.lr)
         #### DQN INIT end
+
+    def expand_graph_axes(self, graph, new_ymax=1.):
+        if new_ymax==0: return
+        new_ymax = float(new_ymax)
+        if graph.ymax < new_ymax: graph.ymax = new_ymax*1.2
+        elif graph.ymin > new_ymax: graph.ymin = new_ymax*0.8 if new_ymax>0 else new_ymax*1.2
+        if abs(new_ymax) > graph.y_ticks_major * 20: graph.y_ticks_major *= 4
+        if graph.xmax > graph.x_ticks_major * 20: graph.x_ticks_major *= 2
+
+    def reset_reward_graph(self):
+        try:
+            self.reward_graph.remove_plot(self.reward_plot)
+            self.reward_graph.remove_plot(self.loss_plot)
+        except: pass
+        self.reward_plot = LinePlot(line_width=2, color=[1, 0, 0, 1])
+        self.loss_plot = LinePlot(line_width=2, color=[0, 0, 1, 1])
+        self.reward_graph.add_plot(self.reward_plot)
+        self.reward_graph.add_plot(self.loss_plot)
+        self.reward_points = []
+        self.loss_points = []
+        self.reward_graph.x_ticks_major = .5; self.reward_graph.y_ticks_major = .1
+        self.reward_graph.xmin = 0; self.reward_graph.xmax = .1; self.reward_graph.ymin = 0; self.reward_graph.ymax = .1
+
+    def do_current_ui_vect(self, vect):
+        self.current_ui_vect[vect[0]-1] = [vect[2], vect[3], vect[4], vect[5]]
+
+    def target_ui_selected_value(self, spinner, text):
+        self.target_ui_vect = Widgets.target_ui(text)
+        print(self.target_ui_vect[1][1])
+        self.targetUiVect.text = str(self.target_ui_vect).replace(' ','')
+
+    # Need Asynchronous app
+    # https://kivy.org/doc/stable/api-kivy.app.html#module-kivy.app
+    def test_dqn(self, instance):
+        # self.cclear()
+        if self.dqnmodespinner.text == "train":
+            train_main(self.dqnr_modespinner.text, self)
+        else:
+            test_main('model.pkl', self)
+
+    def cwriteline(self, string=''):
+        self.console.text += '\n' + string
+
+    def cwrite(self, string=''):
+        self.console.text += string
+
+    def cclear(self):
+        self.console.text = ''
+
+    def add_screen(self, name, widget):
+        scr = Screen(name=name)
+        scr.add_widget(widget)
+        self.sm.add_widget(scr)
+
+    def to_screen(self, namescreen='mainscreen', direction='right'):
+        self.sm.transition.direction = direction
+        self.sm.current = namescreen
+        # if namescreen == 'settings': print(self.current_ui_vect)
+
+    def colrowspinner_selected_value(self, spinner, text):
+        self.mainscreen_rebuild_btn_click(self)
 
     def ihbl(self, widjets, my_height=True):
         hor = BoxLayout(orientation='horizontal', padding=0, spacing=0)
