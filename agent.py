@@ -58,6 +58,9 @@ class Environment:
     def get_actions(self):
         return self.action_space
 
+    def action_space_sample(self):
+        return random.choice(self.action_space)
+
     def get_rewards(self):
         cuv = self.vect_state #0 - self.id, 1 - self.taps, 2 - self.nx, 3 - self.ny, 4 - self.ns, 5 - self.nr
         id = cuv[0] - 1
@@ -82,13 +85,14 @@ class Environment:
         return cur_reward[:4], cur_reward[4]
 
     def take_action(self, action):
-        penalty = self.widget.change_pos_size(action.data.item())
+        penalty = self.widget.change_pos_size(action) #.data.item())
         self.steps_left -= 1
         if self.is_done(): self.done = True
         r_pos, r_taps = self.get_rewards()
         reward = sum(r_pos) + r_taps + penalty
         #reward = sum(r_pos)/len(r_pos) + r_taps + penalty
-        return reward, torch.tensor([reward], device=self.widget.agent.device)
+        terminated = True if self.steps_left==0 else False
+        return reward, torch.tensor([reward], device=self.widget.agent.device), terminated
         #rewards.sort()  #reverse=True)
         #return sum(rewards)/100
         #return min(rewards[:3])
@@ -108,6 +112,8 @@ class Environment:
 
 class Agent:
     loss_data = [0]
+    total_loss = [0]
+    m_loss = [0]
 
     def __init__(self, strategy, num_actions, device=None):
         self.current_step = 0
@@ -116,20 +122,29 @@ class Agent:
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') if not device else device
         self.total_reward = 0.0
 
-    def select_action(self, state, policy_net):
-        rate = self.strategy.get_exploration_rate2(self.current_step)
+    def select_action(self, state, policy_net, env):
+        sample = random.random()
+        eps_threshold = self.strategy.get_exploration_rate(self.current_step)
         self.current_step += 1
-        #print(rate)
-        if rate > random.random():
-            action = random.randrange(self.num_actions)
-            return torch.tensor([action]).to(self.device) #explore
+        if sample > eps_threshold:
+            with torch.no_grad():
+                # t.max(1) will return the largest column value of each row.
+                # second column on max result is index of where max element was
+                # found, so we pick action with the larger expected reward.
+                return policy_net(state).max(1)[1].view(1, 1)
         else:
-            with torch.no_grad(): #exploit
-                #return torch.tensor([policy_net(state).argmax(dim=1)], device=self.device)
-                return torch.tensor([policy_net(state).max(1)[1].view(1, 1)], device=self.device)
+            return torch.tensor([[env.action_space_sample()]], device=self.device, dtype=torch.long)
+        # if rate > random.random():
+        #     action = random.randrange(self.num_actions)
+        #     return torch.tensor([[action]]).to(self.device) #explore
+        # else:
+        #     with torch.no_grad(): #exploit
+        #         #return torch.tensor([policy_net(state).argmax(dim=1)], device=self.device)
+        #         return torch.tensor([[policy_net(state).max(1)[1].view(1, 1)]], device=self.device)
 
     def step(self, env):
-        state = env.get_state()
+        state = env.get_obs_agent()
+        state = torch.tensor(state, dtype=torch.float32, device=self.device).unsqueeze(0)
         # episode_durations = []
         # for timestep in count():
         #     if env.done:
@@ -137,36 +152,62 @@ class Agent:
         #         plot(episode_durations, 100)
         #         break
 
-        action = self.select_action(state, env.widget.policy_net)
-        r, reward = env.take_action(action)
-        next_state = env.get_state()
-        env.widget.memory.push(Experience(state, action, reward, next_state))
-        # state = next_state
+        action = self.select_action(state, env.widget.policy_net, env)
+        r, reward, terminated = env.take_action(action.item())
+        observation = env.get_obs_agent()
+        if terminated:
+            next_state = None
+        else:
+            next_state = torch.tensor(observation, dtype=torch.float32, device=self.device).unsqueeze(0)
+        env.widget.memory.push(state, action, next_state, reward)
+        state = next_state
 
         if env.widget.memory.can_provide_sample(env.app.batch_size) and env.steps_learning>0:
-            experiences = env.widget.memory.sample(env.app.batch_size)
-            states, actions, rewards, next_states = extract_tensors(experiences)
+            transitions = env.widget.memory.sample(env.app.batch_size)
+            batch = Transition(*zip(*transitions))
+            non_final_mask = torch.tensor(tuple(map(lambda s: s is not None,
+                                                    batch.next_state)), device=self.device, dtype=torch.bool)
+            non_final_next_states = torch.cat([s for s in batch.next_state
+                                               if s is not None])
+            state_batch = torch.cat(batch.state)
+            action_batch = torch.cat(batch.action)
+            reward_batch = torch.cat(batch.reward)
 
-            current_q_values = QValues.get_current(env.widget.policy_net, states, actions)
-            next_q_values = QValues.get_next_v2(env.widget.target_net, next_states)
-            #next_q_values = QValues.get_next(env.widget.target_net, next_states)
-            #next_q_values = QValues.get_current(env.widget.target_net, next_states, actions)
-            target_q_values = (next_q_values * env.app.gamma) + rewards
+            # Compute Q(s_t, a) - the model computes Q(s_t), then we select the
+            # columns of actions taken. These are the actions which would've been taken
+            # for each batch state according to policy_net
+            state_action_values = env.widget.policy_net(state_batch).gather(1, action_batch)
+
+            # Compute V(s_{t+1}) for all next states.
+            # Expected values of actions for non_final_next_states are computed based
+            # on the "older" target_net; selecting their best reward with max(1)[0].
+            # This is merged based on the mask, such that we'll have either the expected
+            # state value or 0 in case the state was final.
+            next_state_values = torch.zeros(env.app.batch_size, device=self.device)
+            with torch.no_grad():
+                next_state_values[non_final_mask] = env.widget.target_net(non_final_next_states).max(1)[0]
+            # Compute the expected Q values
+            expected_state_action_values = (next_state_values * env.app.gamma) + reward_batch
+
 
             # Compute Mean Square loss
-            # loss = F.mse_loss(current_q_values, target_q_values.unsqueeze(1))
+            # loss = F.mse_loss(state_action_values, expected_state_action_values.unsqueeze(1))
             # Compute Huber loss
             criterion = nn.SmoothL1Loss()
-            loss = criterion(current_q_values, target_q_values.unsqueeze(1))
+            loss = criterion(state_action_values, expected_state_action_values.unsqueeze(1))
+            self.loss_data.append(loss.data.item())
+            loss_n = loss.data.numpy()
+            self.total_loss.append(loss_n)
+            self.m_loss.append(np.mean(self.total_loss[-1000:]))
 
+            # Optimize the model
             env.widget.optimizer.zero_grad()
             loss.backward()
             # In-place gradient clipping
             torch.nn.utils.clip_grad_value_(env.widget.policy_net.parameters(), 100)
-            env.widget.optimizer.step()
-            self.loss_data.append(loss.data.item())
+            env.widget.optimizer.step()            
+            
             env.steps_learning -= 1
-            #if env.steps_learning<=0: print('-- end of steps learning --')
 
         # self.reward_data.append(reward.data.item())
 
@@ -242,7 +283,7 @@ class Agent2:
         action = self.select_actionFox(action_probabilities, avail_actions_ind)
 
         # Передаем действия агентов в среду, получаем награду
-        reward, rewardT = env.take_action(action)
+        reward, rewardT, _ = env.take_action(action)
 
         # Получаем новое состояние среды
         obs_agent_nextT = env.get_state_tensor2()
@@ -365,6 +406,9 @@ def get_optimizer_Adam(policy_net, lr):
 def get_nn_module(input_length, device):
     return DQN(input_length).to(device)
 
+def get_nn_module1(input_length, device):
+    return DQNtorch(input_length).to(device)
+
 def get_nn_module2(input_length, device):
     return Q_network(input_length).to(device)
 
@@ -372,9 +416,9 @@ class DQN(nn.Module):
     def __init__(self, state_len):
         super(DQN, self).__init__()
         # 0 - left, 1 - right, 2 - up, 3 - down, 4 - more, 5 - less, 6 - rotate left, 7 - rotate right
-        self.fc1 = nn.Linear(in_features=state_len, out_features=24)
-        self.fc2 = nn.Linear(in_features=24, out_features=32)
-        self.out = nn.Linear(in_features=32, out_features=8)
+        self.fc1 = nn.Linear(in_features=state_len, out_features=64)
+        self.fc2 = nn.Linear(in_features=64, out_features=64)
+        self.out = nn.Linear(in_features=64, out_features=8)
         self.sm_layer = nn.Softmax(dim=1)
         # self.fc1 = nn.Linear(in_features=state_len, out_features=40)
         # self.fc2 = nn.Linear(in_features=40, out_features=64)
@@ -404,6 +448,29 @@ class Q_network(nn.Module):
         sm_layer_out = self.sm_layer(q_network_out)
         return sm_layer_out
 
+class DQNtorch(nn.Module):
+
+    def __init__(self, n_observations, n_actions=8):
+        super(DQNtorch, self).__init__()
+        self.layer1 = nn.Linear(n_observations, 128)
+        self.layer2 = nn.Linear(128, 128)
+        self.layer3 = nn.Linear(128, n_actions)
+        self.sm_layer = nn.Softmax(dim=1)
+
+    # Called with either one element to determine next action, or a batch
+    # during optimization. Returns tensor([[left0exp,right0exp]...]).
+    def forward(self, x):
+        x = F.relu(self.layer1(x))
+        x = F.relu(self.layer2(x))
+        return self.sm_layer(self.layer3(x))
+
+
+# PyTorch
+Transition = namedtuple( 
+    'Transition',
+    ('state', 'action', 'next_state', 'reward')
+)
+
 Experience = namedtuple(
     'Experience',
     ('state', 'action', 'reward', 'next_state')
@@ -429,13 +496,14 @@ class ReplayMemory():
     def can_provide_sample(self, batch_size):
         return len(self.memory) >= batch_size
 
+
 class ReplayMemoryPyTorch(object):
 
     def __init__(self, capacity):
         self.memory = deque([], maxlen=capacity)
 
-    def push(self, experience):
-        self.memory.append(experience)
+    def push(self, *args):
+        self.memory.append(Transition(*args))
 
     def sample(self, batch_size):
         return random.sample(self.memory, batch_size)

@@ -32,7 +32,6 @@ class MainApp(App):
     FlyScatters = []
     IdsPngs = [j for j in range(1, 41)]
     AdaptUiOnOff = False
-    y_discount = 0.999
     total_reward = 0
     rewards_count = 0
     reward_data = [0. for i in range(40)]
@@ -44,16 +43,25 @@ class MainApp(App):
     sliders_reward = []
     strategy = None
     #DQN hyperparameters
-    batch_size = 32 #256
-    gamma = y_discount
-    eps_start = 1
-    eps_end = 0.1
+    # PyTorch
+    # BATCH_SIZE = 128
+    # GAMMA = 0.99
+    # EPS_START = 0.9
+    # EPS_END = 0.05
+    # EPS_DECAY = 1000
+    # TAU = 0.005
+    # LR = 1e-4
+    # MEMORY_SIZE = 10000
+    batch_size = 128 #256
+    gamma = 0.99
+    eps_start = 0.9
+    eps_end = 0.05
     eps_decay = 0.001
     eps_decay_steps = 1000
     target_update = 100
     TAU = 0.005 # TAU is the update rate of the target network
     memory_size = 10000
-    lr = 0.01
+    lr = 1e-4
     steps_learning = 1
 
     def __init__(self, **kwargs):
@@ -186,7 +194,7 @@ class MainApp(App):
 
         return self.sm
 
-    def OnSliderRewardChangeValue(self, label, value): label.text=f"{value:.{2}f}"
+
 
     def adapt_ui(self, instance, learning=True):
         m = self.modespinner.text
@@ -228,8 +236,8 @@ class MainApp(App):
     def _update_clock(self, dt):
         widget_id = int(self.graph_widget_id.text)-1
         #reward = self.reward_data[widget_id]
-        reward = self.cumulative_reward_data[widget_id]
-        #reward = self.m_loss_data[widget_id]
+        # reward = self.cumulative_reward_data[widget_id]
+        reward = self.m_loss_data[widget_id]
         loss = self.loss_data[widget_id]
         #reward = self.total_reward
         #reward = self.total_reward / self.rewards_count
@@ -259,7 +267,7 @@ class MainApp(App):
             for j in range(cols):
                 s = FlyScatterV3(do_rotation=True, do_scale=True, auto_bring_to_front=False, do_collide_after_children=False)
                 s.app = self
-                self.DQN_init2(s) #### DQN INIT
+                self.DQN_init(s) #### DQN INIT
                 hor.add_widget(s)
                 s.id = ids = self.IdsPngs[i*cols+j]
                 s.grid_rect = Widgets.get_random_widget('LineRectangle', 0, 0, Window.width // cols, Window.height // (rows + 1), f'S{i*cols+j}')
@@ -287,8 +295,8 @@ class MainApp(App):
         s.set_vect_state()
         s.agent = agent.Agent(s.app.strategy, s.env.num_actions_available())
         s.memory = agent.ReplayMemoryPyTorch(self.memory_size)
-        s.policy_net = agent.get_nn_module(s.env.num_state_available() - 2, s.agent.device)
-        s.target_net = agent.get_nn_module(s.env.num_state_available() - 2, s.agent.device)
+        s.policy_net = agent.get_nn_module2(s.env.num_state_available() - 2, s.agent.device)
+        s.target_net = agent.get_nn_module2(s.env.num_state_available() - 2, s.agent.device)
         s.target_net.load_state_dict(s.policy_net.state_dict())
         s.target_net.eval()
         s.optimizer = agent.get_optimizer_Adam(s.policy_net, self.lr)
@@ -309,6 +317,8 @@ class MainApp(App):
         s.target_net.eval()
         s.optimizer = agent.get_optimizer_AdamW(s.policy_net, self.lr)
         #### DQN INIT end
+
+    def OnSliderRewardChangeValue(self, label, value): label.text=f"{value:.{2}f}"
 
     def expand_graph_axes(self, graph, new_ymax=1.):
         if new_ymax==0: return

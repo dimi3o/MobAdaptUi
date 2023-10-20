@@ -141,7 +141,7 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
             self.app.reward_data[int(self.id)-1] = r #self.agent.reward_data[-1]
             self.app.cumulative_reward_data[int(self.id) - 1] += r #self.agent.reward_data[-1]
             self.app.loss_data[int(self.id)-1] = self.agent.loss_data[-1]
-            # self.app.m_loss_data[int(self.id)-1] = self.agent.m_loss[-1]
+            self.app.m_loss_data[int(self.id)-1] = self.agent.m_loss[-1]
             if self.env.is_done():
                 self.emulation = self.set_emulation(False)
                 self.app.stop_emulation_async('DQN adapt is stopped. End of episode!', 'Adapt',
@@ -169,16 +169,17 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
     def MARL_core(self):
         r = self.agent.step(self.env)
 
-        # target_net_state_dict = self.target_net.state_dict()
-        # policy_net_state_dict = self.policy_net.state_dict()
-        # for key in policy_net_state_dict:
-        #     target_net_state_dict[key] = policy_net_state_dict[key] * self.app.TAU + target_net_state_dict[key] * (1 - self.app.TAU)
-        # self.target_net.load_state_dict(target_net_state_dict)
+        target_net_state_dict = self.target_net.state_dict()
+        policy_net_state_dict = self.policy_net.state_dict()
+        for key in policy_net_state_dict:
+            target_net_state_dict[key] = policy_net_state_dict[key] * self.app.TAU + target_net_state_dict[key] * (1 - self.app.TAU)
+        self.target_net.load_state_dict(target_net_state_dict)
+        
 
         # Синхронизируем веса основной и целевой нейронной сети каждые target_update шагов
-        if self.env.steps_left % self.app.target_update == 0:
-            self.target_net.load_state_dict(self.policy_net.state_dict())
-            # print('--- target_net update ---')
+        # if self.env.steps_left % self.app.target_update == 0:
+        #     self.target_net.load_state_dict(self.policy_net.state_dict())
+        #     # print('--- target_net update ---')
         return r
 
     def set_vect_state(self):
@@ -197,23 +198,24 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
     # 0 - left, 1 - right, 2 - up, 3 - down, 4 - more, 5 - less
     def change_pos_size(self, to=0, deltapos=1, deltascale=0.01):
         r = self.app.sliders_reward[5].value # reward for action
-        # if to==0 and self.x>0: self.x -= deltapos
-        # elif to==1 and self.x+((self.width//2)*self.scale)<Window.width: self.x += deltapos
-        # elif to==2 and self.y+((self.height*1.5)*self.scale)<Window.height: self.y += deltapos
-        # elif to==3 and self.y>0: self.y -= deltapos
-        # elif to==4 and self.scale<2.: self.scale += deltascale
-        # elif to==5 and self.scale>0.4: self.scale -= deltascale
-        # elif to==6: self.rotation -= 1 # and (self.rotation>265 or self.rotation==0.)
-        # elif to==7: self.rotation += 1 # and self.rotation<110
-        if to==0: self.x -= deltapos
-        elif to==1: self.x += deltapos
-        elif to==2: self.y += deltapos
-        elif to==3: self.y -= deltapos
-        elif to==4: self.scale += deltascale
-        elif to==5: self.scale -= deltascale
+        if to==0 and self.x>0: self.x -= deltapos
+        elif to==1 and self.x+((self.width//2)*self.scale)<Window.width: self.x += deltapos
+        elif to==2 and self.y+((self.height*1.5)*self.scale)<Window.height: self.y += deltapos
+        elif to==3 and self.y>0: self.y -= deltapos
+        elif to==4 and self.scale<2.: self.scale += deltascale
+        elif to==5 and self.scale>0.4: self.scale -= deltascale
         elif to==6: self.rotation -= 1 # and (self.rotation>265 or self.rotation==0.)
         elif to==7: self.rotation += 1 # and self.rotation<110
-        else: r = self.app.sliders_reward[6].value # penalty for inaction
+        else: r = self.app.sliders_reward[6].value  # penalty for inaction
+        # if to==0: self.x -= deltapos
+        # elif to==1: self.x += deltapos
+        # elif to==2: self.y += deltapos
+        # elif to==3: self.y -= deltapos
+        # elif to==4: self.scale += deltascale
+        # elif to==5: self.scale -= deltascale
+        # elif to==6: self.rotation -= 1 # and (self.rotation>265 or self.rotation==0.)
+        # elif to==7: self.rotation += 1 # and self.rotation<110
+        # else: r = self.app.sliders_reward[6].value # penalty for inaction
         self.set_vect_state()
         return r
 
