@@ -22,10 +22,11 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.textinput import TextInput
 from kivy.graphics import Color, Rectangle
 from kivy.clock import Clock
+from kivy.config import Config
 from kivy_garden.graph import LinePlot
 
 WhiteBackColor = True
-__version__ = '0.0.3.3'
+__version__ = '0.0.3.4'
 
 class MainApp(App):
     sm = ScreenManager()
@@ -68,7 +69,7 @@ class MainApp(App):
         super(MainApp, self).__init__(**kwargs)
         self.title = 'MARL Mobile User Interface v.'+__version__
         self.text_color = MyColors.get_textcolor(WhiteBackColor)
-        self.modes = ('Fly adapt', 'Size adapt', 'Rotate adapt', 'Fly+Size+Rotate adapt','DQN adapt', 'GAN adapt')
+        self.modes = ('DQN', 'GAN', 'Fly', 'Size', 'Rotate', 'Fly+Size+Rotate')
         self.cols_rows = ('1х1', '2х2', '3х3', '4х4', '5х5', '6х6', '8x5')
         self.objects = ('Apps', 'Foods', 'Widgets')
         self.kitchen = ('rus', 'eur', 'asia')
@@ -102,7 +103,7 @@ class MainApp(App):
 
         #FOOT PANEL
         self.episodespinner = Spinner(text=self.episodes[1], values=self.episodes, size_hint_x=None, width='50dp', background_color=(0.225, 0.155, 0.564, 1))
-        self.modespinner = Spinner(text="DQN adapt", values=self.modes, background_color=(0.127,0.854,0.561,1))
+        self.modespinner = Spinner(text="DQN", values=self.modes, background_color=(0.127,0.854,0.561,1))
         self.adapt_btn = Button(text='ADAPT UI', size_hint_y=None, height='30dp', background_color=(1, 0, 0, 1), on_press=self.adapt_ui) #on_press=lambda null: self.show_popup('MARLMUI starting... '+self.modespinner.text, 'Info'))
         test_btn = Button(text='TEST UI', size_hint_y=None, height='30dp', size_hint_x=None, width='100dp', background_color=(0, 0, 1, 1), on_press=lambda null: self.adapt_ui(self, False))
         quit_btn = Button(text='QUIT', size_hint_y=None, height='30dp', background_color=(0.9, 0.9, 0.9, 1), on_press=lambda null: self.get_running_app().stop())
@@ -119,7 +120,7 @@ class MainApp(App):
         self.mainscreen_rebuild_btn_click(self)
         self.root.add_widget(self.mainscreen_widgets)
 
-        # SWAP: main content is top layer and center of screen
+        # SWAP: the main content is the top layer and center of the screen.
         swap = self.root.children[0]
         self.root.children[0] = self.root.children[1]
         self.root.children[1] = swap
@@ -133,7 +134,7 @@ class MainApp(App):
         self.root4 = BoxLayout(orientation='vertical', padding=10) #dqn test
 
         # SETTINGS SCREEN, reward func tab
-        self.targetUiVect = TextInput(password=False, multiline=True, readonly=True)
+        self.targetUiVect = TextInput(password=False, multiline=True) #, readonly=True)
         cur_sl_label = Label(text='_._', color=(1, 0, 0, 1))
         temp_sliders = [cur_sl_label]
         for i in range(7):
@@ -145,8 +146,8 @@ class MainApp(App):
             slider.bind(value=labelcallback)
             temp_sliders.append(self.ihbl([sl_label, slider], my_height=False))
             self.sliders_reward.append(slider)
-
-        self.root3.add_widget(self.ihbl([self.ivbl(temp_sliders),self.ivbl([Label(text='Target UI State vector:',color=(1, 0, 0, 1),size_hint_y=None,height='30dp'),self.targetUiVect], my_width=False)], my_height=False))
+        btn_get_vect_state = Button(text='get current', size_hint_y=None, height='30dp', background_color=(0, 0, 1, 1), on_press=self.get_current_vect_state)
+        self.root3.add_widget(self.ihbl([self.ivbl(temp_sliders),self.ivbl([self.ihbl([Label(text='Target UI State vector:',color=(1, 0, 0, 1),size_hint_y=None,height='30dp'),btn_get_vect_state]),self.targetUiVect], my_width=False)], my_height=False))
         self.kitchenspinner = Spinner(text=self.kitchen[0], values=self.kitchen, background_color=(0.027, 0.954, 0.061, 1))
         self.kitchenspinner.bind(text=self.target_ui_selected_value)
         self.root3.add_widget(self.ihbl([Label(text='Kitchen:', color=(0, 0, 1, 1)),self.kitchenspinner]))
@@ -194,27 +195,28 @@ class MainApp(App):
 
         return self.sm
 
-
-
     def adapt_ui(self, instance, learning=True):
         m = self.modespinner.text
-        if m == 'GAN adapt':
+        if m == 'GAN':
             self.show_popup('This adapt ui in the pipeline...', self.modespinner.text)
             return
 
         self.AdaptUiOnOff = not self.AdaptUiOnOff
-        if m == 'DQN adapt' and self.AdaptUiOnOff == True:
+        if m == 'DQN' and self.AdaptUiOnOff == True:
             self.total_reward = 0
             self.rewards_count = 0
         for s in self.FlyScatters:
-            s.change_emulation()
             s.mode = self.modespinner.text
-            if m == 'DQN adapt' and s.emulation:
+            s.change_emulation()
+            if m == 'DQN' and s.emulation:
                 s.agent.total_reward = 0
                 s.agent.current_step = 0
+                s.loss_data = [0]
+                s.total_loss = [0]
+                s.m_loss = [0]
                 s.env.steps_left = int(self.episodespinner.text)
                 s.env.done = False
-                s.env.steps_learning = int((int(self.episodespinner.text) -self.batch_size ) * self.steps_learning) if learning else 0
+                s.env.steps_learning = int(int(self.episodespinner.text) * self.steps_learning) if learning else 0
 
             self.adapt_btn.background_color = (0.127,0.854,0.561,1) if s.emulation else (1, 0, 0, 1)
         if self.AdaptUiOnOff:
@@ -248,8 +250,6 @@ class MainApp(App):
         self.reward_graph.xmax += 1 / 8.
         self.expand_graph_axes(self.reward_graph, new_ymax=reward)
         self.expand_graph_axes(self.reward_graph, new_ymax=loss)
-
-
 
     def mainscreen_rebuild_btn_click(self, instance):
         self.mainscreen_widgets.clear_widgets()
@@ -299,7 +299,7 @@ class MainApp(App):
         s.target_net = agent.get_nn_module2(s.env.num_state_available() - 2, s.agent.device)
         s.target_net.load_state_dict(s.policy_net.state_dict())
         s.target_net.eval()
-        s.optimizer = agent.get_optimizer_Adam(s.policy_net, self.lr)
+        s.optimizer = agent.get_optimizer_AdamW(s.policy_net, self.lr)
         #### DQN INIT end
 
     def DQN_init2(self, s):
@@ -315,7 +315,7 @@ class MainApp(App):
         s.policy_net = agent.get_nn_module2(s.env.num_state_available() - 2, s.agent.device)
         s.target_net = agent.get_nn_module2(s.env.num_state_available() - 2, s.agent.device)
         s.target_net.eval()
-        s.optimizer = agent.get_optimizer_AdamW(s.policy_net, self.lr)
+        s.optimizer = agent.get_optimizer_Adam(s.policy_net, self.lr)
         #### DQN INIT end
 
     def OnSliderRewardChangeValue(self, label, value): label.text=f"{value:.{2}f}"
@@ -345,9 +345,15 @@ class MainApp(App):
     def do_current_ui_vect(self, vect):
         self.current_ui_vect[vect[0]-1] = [vect[2], vect[3], vect[4], vect[5]]
 
+    def get_current_vect_state(self, instance):
+        for s in self.FlyScatters:
+            v = s.set_vect_state()
+            self.current_ui_vect[v[0] - 1] = v[2:]
+        self.targetUiVect.text = str(self.current_ui_vect)
+
     def target_ui_selected_value(self, spinner, text):
         self.target_ui_vect = Widgets.target_ui(text)
-        print(self.target_ui_vect[1][1])
+        # print(self.target_ui_vect[1][1])
         self.targetUiVect.text = str(self.target_ui_vect).replace(' ','')
 
     # Need Asynchronous app
@@ -391,7 +397,7 @@ class MainApp(App):
     def ivbl(self, widjets, my_width=True):
         vert = BoxLayout(orientation='vertical', padding=0, spacing=0)
         if my_width:
-            vert.size_hint_x=None;  vert.width='400dp'
+            vert.size_hint_x=None;  vert.width=f'{Window.width//2}dp'
         for w in widjets: vert.add_widget(w)
         return vert
 
@@ -420,6 +426,9 @@ if __name__ == "__main__":
     # Window.minimum_height = 800
     # Window.minimum_width = 300
     # Window.on_resize(300, 800)
+    Config.set('graphics', 'width', '300')
+    Config.set('graphics', 'height', '800')
+    Window.size = (435, 940)
     app = MainApp()
     app.run()
     # x = torch.randn(5)

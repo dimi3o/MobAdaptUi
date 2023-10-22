@@ -4,6 +4,10 @@
 
 This project is a mobile user interface sandbox platform based on the popular Kivy software library, providing rapid development capabilities for applications equipped with user interfaces, such as multi-touch applications.
 
+Version 0.0.3.4 (22.10.2023) MARLMUI
+
+![img.png](data/MobAdaptUI_v34_Agents.gif)
+
 Version 0.0.3.3 (11.10.2023) DQN via PyTorch
 
 ![img.png](data/MobAdaptUI_v33_Agents.gif)

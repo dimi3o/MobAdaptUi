@@ -68,11 +68,9 @@ class Environment:
         cur_reward = []
         cur_reward.append(1 - abs(tuv[0] - cuv[2]))  # nx, position X
         cur_reward.append(1 - abs(tuv[1] - cuv[3]))  # ny, position Y
-        rt = (tuv[2] - 0.4) / (2 - 0.4)
-        rc = (cuv[4] - 0.4) / (2 - 0.4)
-        cur_reward.append(1 - abs(rt - rc))  # ns, scale norm value: z i = (x i – мин(х)) / (макс(х) – мин(х))
-        cur_reward.append(max(0, 1 - abs(tuv[3] - cuv[5])))  # ny, rotate
-        cur_reward.append(cuv[1]) # / 10. if cuv[1]<=10 else 1)  # taps
+        cur_reward.append(1 - abs(tuv[2] - cuv[4]))  # ns, scale
+        cur_reward.append(1 - abs(tuv[3] - cuv[5]))  # ny, rotate
+        cur_reward.append(min(1, cuv[1] / 10.))  # taps
         temp_cur_reward = cur_reward.copy()
         if self.last_reward.get(id, None) is not None:
             temp_last_reward = self.last_reward[id].copy()
@@ -80,6 +78,8 @@ class Environment:
             penalty = self.app.sliders_reward[6].value
             for i in range(5):
                 cur_reward[i] = self.app.sliders_reward[i].value if delta_cur_last_reward[i] > 0 else penalty if delta_cur_last_reward[i] < 0 else 0
+        else:
+            cur_reward = [0. for _ in cur_reward]
         self.last_reward[id] = temp_cur_reward
         #return self.last_reward[id], cur_reward[4]
         return cur_reward[:4], cur_reward[4]
