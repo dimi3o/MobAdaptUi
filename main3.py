@@ -146,8 +146,9 @@ class MainApp(App):
             slider.bind(value=labelcallback)
             temp_sliders.append(self.ihbl([sl_label, slider], my_height=False))
             self.sliders_reward.append(slider)
-        btn_get_vect_state = Button(text='get current', size_hint_y=None, height='30dp', background_color=(0, 0, 1, 1), on_press=self.get_current_vect_state)
-        self.root3.add_widget(self.ihbl([self.ivbl(temp_sliders),self.ivbl([self.ihbl([Label(text='Target UI State vector:',color=(1, 0, 0, 1),size_hint_y=None,height='30dp'),btn_get_vect_state]),self.targetUiVect], my_width=False)], my_height=False))
+        btn_get_vect_state = Button(text='get', size_hint_y=None, height='30dp', background_color=(0, 0, 1, 1), on_press=self.get_current_vect_state)
+        btn_set_vect_state = Button(text='set', size_hint_y=None, height='30dp', background_color=(1, 0, 0, 1), on_press=self.set_current_vect_state)
+        self.root3.add_widget(self.ihbl([self.ivbl(temp_sliders),self.ivbl([self.ihbl([Label(text='Target UI State vector:',color=(1, 0, 0, 1),size_hint_y=None,height='30dp'),btn_get_vect_state,btn_set_vect_state]),self.targetUiVect], my_width=False)], my_height=False))
         self.kitchenspinner = Spinner(text=self.kitchen[0], values=self.kitchen, background_color=(0.027, 0.954, 0.061, 1))
         self.kitchenspinner.bind(text=self.target_ui_selected_value)
         self.root3.add_widget(self.ihbl([Label(text='Kitchen:', color=(0, 0, 1, 1)),self.kitchenspinner]))
@@ -350,6 +351,12 @@ class MainApp(App):
             v = s.set_vect_state()
             self.current_ui_vect[v[0] - 1] = v[2:]
         self.targetUiVect.text = str(self.current_ui_vect)
+
+    def set_current_vect_state(self, instance):
+        for s in self.FlyScatters:
+            v = self.target_ui_vect[s.id-1]
+            s.update_vect_state_from(v)
+        print('-- vect state updated from target UI --')
 
     def target_ui_selected_value(self, spinner, text):
         self.target_ui_vect = Widgets.target_ui(text)
