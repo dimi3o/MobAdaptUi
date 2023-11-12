@@ -136,15 +136,21 @@ class MainApp(App):
         # SETTINGS SCREEN, reward func tab
         self.targetUiVect = TextInput(password=False, multiline=True) #, readonly=True)
         cur_sl_label = Label(text='_._', color=(1, 0, 0, 1))
-        temp_sliders = [cur_sl_label]
-        for i in range(7):
-            param = 'nx' if i==0 else 'ny' if i==1 else 'ns' if i==2 else 'nr' if i==3 else 'nt' if i==4 else 'penalty+'if i==5 else 'penalty-'
-            sl_label = Label(text=f'R{str(i+1)} ({param}):', color=(0, 0, 0, 1), size_hint_x=None, width='80dp')
-            value = 0.01 if i == 5 else .95 if i == 4 else .15 if i == 3 else 0.55 if i < 5 else -.95
+        temp_sliders = [cur_sl_label]; sliders = []; checkboxes = []; values = []
+        for i in range(14):
+            param = 'nx' if i==0 else 'ny' if i==1 else 'ns' if i==2 else 'nr' if i==3 else 'nt' if i==4 else 'penalty+'if i==5 else 'penalty-' if i==6 else 'usability'+str(i-6)
+            sl_label = Label(text=f'R{str(i+1)} ({param}):', color=(0, 0, 0, 1), halign='auto') #size_hint_x=None, width='90dp',
+            value = 0.01 if i == 5 else .95 if i == 4 else .15 if i == 3 else 0.55 if i < 5 else -.95 if i<7 else 1
+            values.append(value)
             slider = Widgets.get_random_widget('Slider', -2., 2., value, 0.01)
             labelcallback = lambda instance, value: self.OnSliderRewardChangeValue(cur_sl_label, value)
             slider.bind(value=labelcallback)
-            temp_sliders.append(self.ihbl([sl_label, slider], my_height=False))
+            sliders.append(slider)
+            reward_flag = CheckBox(active=True, color=(0, 0, 1, 1), size_hint_x=None, width='10dp')
+            checkboxes.append(reward_flag)
+            reward_flagcallback = lambda instance, active: self.reward_flag_change(instance, sliders, checkboxes, values)
+            reward_flag.bind(active=reward_flagcallback)
+            temp_sliders.append(self.ihbl([reward_flag, sl_label, slider], my_height=False))
             self.sliders_reward.append(slider)
         btn_get_vect_state = Button(text='get', size_hint_y=None, height='30dp', background_color=(0, 0, 1, 1), on_press=self.get_current_vect_state)
         btn_set_vect_state = Button(text='set', size_hint_y=None, height='30dp', background_color=(1, 0, 0, 1), on_press=self.set_current_vect_state)
@@ -321,6 +327,10 @@ class MainApp(App):
 
     def OnSliderRewardChangeValue(self, label, value): label.text=f"{value:.{2}f}"
 
+    def reward_flag_change(self, instance, sliders, checkboxes, values):
+        i = checkboxes.index(instance)
+        sliders[i].value = values[i] if instance.active else 0
+
     def expand_graph_axes(self, graph, new_ymax=1.):
         if new_ymax==0: return
         new_ymax = float(new_ymax)
@@ -403,8 +413,7 @@ class MainApp(App):
 
     def ivbl(self, widjets, my_width=True):
         vert = BoxLayout(orientation='vertical', padding=0, spacing=0)
-        if my_width:
-            vert.size_hint_x=None;  vert.width=f'{Window.width//2}dp'
+        if my_width: vert.size_hint_x=None; vert.width=f'{Window.width//2}dp'
         for w in widjets: vert.add_widget(w)
         return vert
 
@@ -435,7 +444,7 @@ if __name__ == "__main__":
     # Window.on_resize(300, 800)
     Config.set('graphics', 'width', '300')
     Config.set('graphics', 'height', '800')
-    Window.size = (435, 940)
+    Window.size = (635, 640) #(435, 940)
     app = MainApp()
     app.run()
     # x = torch.randn(5)
