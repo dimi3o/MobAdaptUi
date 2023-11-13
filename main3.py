@@ -62,7 +62,7 @@ class MainApp(App):
     target_update = 100
     TAU = 0.005 # TAU is the update rate of the target network
     memory_size = 10000
-    lr = 1e-4
+    lr = 1e-3
     steps_learning = 1
 
     def __init__(self, **kwargs):
@@ -221,9 +221,9 @@ class MainApp(App):
                 s.loss_data = [0]
                 s.total_loss = [0]
                 s.m_loss = [0]
-                s.env.steps_left = int(self.episodespinner.text)
+                s.env.steps_left = int(self.episodespinner.text)*len(self.FlyScatters)
                 s.env.done = False
-                s.env.steps_learning = int(int(self.episodespinner.text) * self.steps_learning) if learning else 0
+                s.env.steps_learning = int(s.env.steps_left * self.steps_learning) if learning else 0
 
             self.adapt_btn.background_color = (0.127,0.854,0.561,1) if s.emulation else (1, 0, 0, 1)
         if self.AdaptUiOnOff:
@@ -269,12 +269,18 @@ class MainApp(App):
 
         #print('W =', Window.width, ',w =', Window.width // cols, ',H =', Window.height, ',h =', Window.height // (rows + 1))
 
+        # DQN Environment
+        steps_left = int(self.episodespinner.text)
+        steps_learning = int((int(self.episodespinner.text) - self.batch_size) * self.steps_learning)
+        n_agents = rows*cols
+        e = agent.Environment(steps_left*n_agents, steps_learning*n_agents, self)
+
         for i in range(rows):
             hor = BoxLayout(orientation='horizontal', padding=0, spacing=0)
             for j in range(cols):
                 s = FlyScatterV3(do_rotation=True, do_scale=True, auto_bring_to_front=False, do_collide_after_children=False)
                 s.app = self
-                self.DQN_init(s) #### DQN INIT
+                self.DQN_init(s, e) #### DQN INIT
                 hor.add_widget(s)
                 s.id = ids = self.IdsPngs[i*cols+j]
                 s.grid_rect = Widgets.get_random_widget('LineRectangle', 0, 0, Window.width // cols, Window.height // (rows + 1), f'S{i*cols+j}')
@@ -293,34 +299,30 @@ class MainApp(App):
 
             self.mainscreen_widgets.add_widget(hor)
 
-    def DQN_init(self, s):
+    def DQN_init(self, s, e):
         #### DQN INIT start
         s.app.strategy = agent.EpsilonGreedyStrategy(self.eps_start, self.eps_end, self.eps_decay, self.eps_decay_steps)
-        steps_left = int(self.episodespinner.text)
-        steps_learning = int((int(self.episodespinner.text) - self.batch_size) * self.steps_learning)
-        s.env = agent.Environment(steps_left, steps_learning, self, s)
+        s.env = e
         s.set_vect_state()
-        s.agent = agent.Agent(s.app.strategy, s.env.num_actions_available())
+        s.agent = agent.Agent(s.app.strategy, e.num_actions_available(), s)
         s.memory = agent.ReplayMemoryPyTorch(self.memory_size)
-        s.policy_net = agent.get_nn_module2(s.env.num_state_available() - 2, s.agent.device)
-        s.target_net = agent.get_nn_module2(s.env.num_state_available() - 2, s.agent.device)
+        s.policy_net = agent.get_nn_module2(e.num_state_available() - 2, s.agent.device)
+        s.target_net = agent.get_nn_module2(e.num_state_available() - 2, s.agent.device)
         s.target_net.load_state_dict(s.policy_net.state_dict())
         s.target_net.eval()
         s.optimizer = agent.get_optimizer_AdamW(s.policy_net, self.lr)
         #### DQN INIT end
 
-    def DQN_init2(self, s):
+    def DQN_init2(self, s, e):
         #### DQN INIT start
         s.app.strategy = agent.EpsilonGreedyStrategy(self.eps_start, self.eps_end, self.eps_decay, self.eps_decay_steps)
-        steps_left = int(self.episodespinner.text)
-        steps_learning = int((int(self.episodespinner.text) - self.batch_size) * self.steps_learning)
-        s.env = agent.Environment(steps_left, steps_learning, self, s)
+        s.env = e
         s.set_vect_state()
         memory = agent.ReplayMemoryPyTorch(self.memory_size)
-        s.agent = agent.Agent2(s.app.strategy, memory, s.env.num_actions_available())
+        s.agent = agent.Agent2(s.app.strategy, memory, e.num_actions_available(), s)
         s.experience_buffer = deque(maxlen=self.memory_size)
-        s.policy_net = agent.get_nn_module2(s.env.num_state_available() - 2, s.agent.device)
-        s.target_net = agent.get_nn_module2(s.env.num_state_available() - 2, s.agent.device)
+        s.policy_net = agent.get_nn_module2(e.num_state_available() - 2, s.agent.device)
+        s.target_net = agent.get_nn_module2(e.num_state_available() - 2, s.agent.device)
         s.target_net.eval()
         s.optimizer = agent.get_optimizer_Adam(s.policy_net, self.lr)
         #### DQN INIT end
