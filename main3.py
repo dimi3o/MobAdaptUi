@@ -76,6 +76,7 @@ class MainApp(App):
         self.episodes = ('200', '2000', '20000', '200000')
         self.modeargs = ('train', 'test')
         self.r_modeargs = ('map', 'weights', 'stats')
+        self.usability_metrics = ['DM', 'TeS', 'BL', 'Tread', 'Tpointing', 'Tlocal', 'LA', 'TV', 'BH', 'BV']
 
     def on_resize_my(self, oldsize, newsize):
         self.reward_graph.height = self.graph_layout.height = Window.height * 5 / 7
@@ -137,10 +138,10 @@ class MainApp(App):
         self.targetUiVect = TextInput(password=False, multiline=True) #, readonly=True)
         cur_sl_label = Label(text='_._', color=(1, 0, 0, 1))
         temp_sliders = [cur_sl_label]; sliders = []; checkboxes = []; values = []
-        for i in range(14):
-            param = 'nx' if i==0 else 'ny' if i==1 else 'ns' if i==2 else 'nr' if i==3 else 'nt' if i==4 else 'penalty+'if i==5 else 'penalty-' if i==6 else 'usability'+str(i-6)
+        for i in range(17):
+            param = 'nx' if i==0 else 'ny' if i==1 else 'ns' if i==2 else 'nr' if i==3 else 'nt' if i==4 else 'penalty+'if i==5 else 'penalty-' if i==6 else self.usability_metrics[i-7]
             sl_label = Label(text=f'R{str(i+1)} ({param}):', color=(0, 0, 0, 1), halign='auto') #size_hint_x=None, width='90dp',
-            value = 0.01 if i == 5 else .95 if i == 4 else .15 if i == 3 else 0.55 if i < 5 else -.95 if i<7 else 1
+            value = 0.01 if i == 5 else .95 if i == 4 else .15 if i == 3 else 0.55 if i < 5 else -.95 if i<7 else .95
             values.append(value)
             slider = Widgets.get_random_widget('Slider', -2., 2., value, 0.01)
             labelcallback = lambda instance, value: self.OnSliderRewardChangeValue(cur_sl_label, value)
@@ -154,7 +155,7 @@ class MainApp(App):
             self.sliders_reward.append(slider)
         btn_get_vect_state = Button(text='get', size_hint_y=None, height='30dp', background_color=(0, 0, 1, 1), on_press=self.get_current_vect_state)
         btn_set_vect_state = Button(text='set', size_hint_y=None, height='30dp', background_color=(1, 0, 0, 1), on_press=self.set_current_vect_state)
-        self.root3.add_widget(self.ihbl([self.ivbl(temp_sliders),self.ivbl([self.ihbl([Label(text='Target UI State vector:',color=(1, 0, 0, 1),size_hint_y=None,height='30dp'),btn_get_vect_state,btn_set_vect_state]),self.targetUiVect], my_width=False)], my_height=False))
+        self.root3.add_widget(self.ihbl([self.ivbl(temp_sliders),self.ivbl([self.ihbl([Label(text='UI State vector:',color=(1, 0, 0, 1),size_hint_y=None,height='30dp'),btn_get_vect_state,btn_set_vect_state]),self.targetUiVect], my_width=False)], my_height=False))
         self.kitchenspinner = Spinner(text=self.kitchen[0], values=self.kitchen, background_color=(0.027, 0.954, 0.061, 1))
         self.kitchenspinner.bind(text=self.target_ui_selected_value)
         self.root3.add_widget(self.ihbl([Label(text='Kitchen:', color=(0, 0, 1, 1)),self.kitchenspinner]))
@@ -274,7 +275,7 @@ class MainApp(App):
         steps_learning = int((int(self.episodespinner.text) - self.batch_size) * self.steps_learning)
         n_agents = rows*cols
         e = agent.Environment(steps_left*n_agents, steps_learning*n_agents, self)
-
+        self.strategy = agent.EpsilonGreedyStrategy(self.eps_start, self.eps_end, self.eps_decay, self.eps_decay_steps)
         for i in range(rows):
             hor = BoxLayout(orientation='horizontal', padding=0, spacing=0)
             for j in range(cols):
@@ -301,13 +302,11 @@ class MainApp(App):
 
     def DQN_init(self, s, e):
         #### DQN INIT start
-        s.app.strategy = agent.EpsilonGreedyStrategy(self.eps_start, self.eps_end, self.eps_decay, self.eps_decay_steps)
         s.env = e
         s.set_vect_state()
-        s.agent = agent.Agent(s.app.strategy, e.num_actions_available(), s)
-        s.memory = agent.ReplayMemoryPyTorch(self.memory_size)
-        s.policy_net = agent.get_nn_module2(e.num_state_available() - 2, s.agent.device)
-        s.target_net = agent.get_nn_module2(e.num_state_available() - 2, s.agent.device)
+        s.agent = agent.Agent(s.app.strategy, agent.ReplayMemoryPyTorch(self.memory_size), e.num_actions_available(), s)
+        s.policy_net = agent.get_nn_module(e.num_state_available(s.agent) - 2, s.agent.device)
+        s.target_net = agent.get_nn_module(e.num_state_available(s.agent) - 2, s.agent.device)
         s.target_net.load_state_dict(s.policy_net.state_dict())
         s.target_net.eval()
         s.optimizer = agent.get_optimizer_AdamW(s.policy_net, self.lr)
@@ -315,14 +314,11 @@ class MainApp(App):
 
     def DQN_init2(self, s, e):
         #### DQN INIT start
-        s.app.strategy = agent.EpsilonGreedyStrategy(self.eps_start, self.eps_end, self.eps_decay, self.eps_decay_steps)
         s.env = e
         s.set_vect_state()
-        memory = agent.ReplayMemoryPyTorch(self.memory_size)
-        s.agent = agent.Agent2(s.app.strategy, memory, e.num_actions_available(), s)
-        s.experience_buffer = deque(maxlen=self.memory_size)
-        s.policy_net = agent.get_nn_module2(e.num_state_available() - 2, s.agent.device)
-        s.target_net = agent.get_nn_module2(e.num_state_available() - 2, s.agent.device)
+        s.agent = agent.Agent2(s.app.strategy, agent.ReplayMemoryPyTorch(self.memory_size), e.num_actions_available(), s)
+        s.policy_net = agent.get_nn_module2(e.num_state_available(s.agent) - 2, s.agent.device)
+        s.target_net = agent.get_nn_module2(e.num_state_available(s.agent) - 2, s.agent.device)
         s.target_net.eval()
         s.optimizer = agent.get_optimizer_Adam(s.policy_net, self.lr)
         #### DQN INIT end

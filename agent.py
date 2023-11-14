@@ -13,8 +13,6 @@ import torch.nn.functional as F
 
 class Environment:
     app = None
-
-    vect_state = []
     last_reward = dict()
     action_space = [0, 1, 2, 3, 4, 5, 6, 7] # 0 - left, 1 - right, 2 - up, 3 - down, 4 - more, 5 - less, 6 - rotate left, 7 - rotate right
 
@@ -33,10 +31,10 @@ class Environment:
         return self.current_state is None
 
     def get_state_tensor2(self, agent):
-        return torch.FloatTensor([self.vect_state[2:]], device=agent.widget.device)
+        return torch.FloatTensor([agent.widget.vect_state[2:]], device=agent.widget.device)
 
     def get_state_tensor(self, agent):
-        return torch.tensor([self.vect_state[2:]], device=agent.widget.device)
+        return torch.tensor([agent.widget.vect_state[2:]], device=agent.widget.device)
         #return torch.tensor([self.vect_state[1:]], device=self.widget.agent.device)
 
     def get_state(self, agent):
@@ -51,8 +49,8 @@ class Environment:
         #     self.current_state = self.get_state_tensor(agent)
         #     return self.current_state - s1
 
-    def get_obs_agent(self): # Agent2
-        return self.vect_state[2:]
+    def get_obs_agent(self, agent): # Agent2
+        return agent.widget.vect_state[2:]
 
     def get_actions(self):
         return self.action_space
@@ -60,23 +58,35 @@ class Environment:
     def action_space_sample(self):
         return random.choice(self.action_space)
 
-    def get_rewards(self):
-        cuv = self.vect_state #0 - self.id, 1 - self.taps, 2 - self.nx, 3 - self.ny, 4 - self.ns, 5 - self.nr
+    # Usability model: Показатель плотности (DM), Удобочитаемость (Размер выделенного элемента, TeS), Баланс (BL)
+    # Todi AUI: считывание элемента (Tread), наведение курсора (Tpointing), локальный поиск (Tlocal)
+    # QUIM: Соответствие макета (LA), Видимость задач (TV), Горизонтальный баланс(BH), Вертикальный баланс (BV)
+    # usability_metrics = ['DM', 'TeS', 'BL', 'Tread', 'Tpointing', 'Tlocal', 'LA', 'TV', 'BH', 'BV']
+    def get_rewards(self, agent):
+        cuv = agent.widget.vect_state #0 - self.id, 1 - self.taps, 2 - self.nx, 3 - self.ny, 4 - self.ns, 5 - self.nr
         id = cuv[0] - 1
         tuv = self.app.target_ui_vect[id] # 0 - self.nx, 1 - self.ny, 2 - self.ns, 3 - self.nr
         cur_reward = []
         cur_reward.append(1 - abs(tuv[0] - cuv[2]))  # nx, position X
         cur_reward.append(1 - abs(tuv[1] - cuv[3]))  # ny, position Y
         cur_reward.append(1 - abs(tuv[2] - cuv[4]))  # ns, scale
-        cur_reward.append(1 - abs(tuv[3] - cuv[5]))  # ny, rotate
+        cur_reward.append(1 - abs(tuv[3] - cuv[5]))  # nr, rotate
         cur_reward.append(min(1, cuv[1] / 10.))  # taps
         temp_cur_reward = cur_reward.copy()
         if self.last_reward.get(id, None) is not None:
-            temp_last_reward = self.last_reward[id].copy()
-            delta_cur_last_reward = [temp_cur_reward[i]-temp_last_reward[i] for i in range(len(temp_last_reward))]
+            # temp_last_reward = self.last_reward[id].copy()
+            delta_cur_last_reward = [cur_reward[i]-self.last_reward[id][i] for i in range(len(self.last_reward[id]))]
             penalty = self.app.sliders_reward[6].value
+            # local reward
             for i in range(5):
-                cur_reward[i] = self.app.sliders_reward[i].value if delta_cur_last_reward[i] > 0 else penalty if delta_cur_last_reward[i] < 0 else 0
+                reward = self.app.sliders_reward[i].value
+                if reward == 0: continue
+                delta = delta_cur_last_reward[i]
+                cur_reward[i] = reward if delta > 0 else penalty if delta < 0 else 0
+            # usability metrics
+            for i in range(7,len(self.app.sliders_reward)):
+                if self.app.sliders_reward[i].value==0: continue
+                pass
         else:
             cur_reward = [0. for _ in cur_reward]
         self.last_reward[id] = temp_cur_reward
@@ -87,7 +97,7 @@ class Environment:
         penalty = agent.widget.change_pos_size(action) #.data.item())
         self.steps_left -= 1
         if self.is_done(): self.done = True
-        r_pos, r_taps = self.get_rewards()
+        r_pos, r_taps = self.get_rewards(agent)
         reward = sum(r_pos) + r_taps + penalty
         #reward = sum(r_pos)/len(r_pos) + r_taps + penalty
         terminated = True if self.steps_left==0 else False
@@ -106,18 +116,21 @@ class Environment:
     def num_actions_available(self):
         return len(self.get_actions())
 
-    def num_state_available(self):
-        return len(self.vect_state)
+    def num_state_available(self, agent):
+        return len(agent.widget.vect_state)
 
 class Agent:
     loss_data = [0]
     total_loss = [0]
     m_loss = [0]
     widget = None
+    memory = None
+    last_reward = dict()
 
-    def __init__(self, strategy, num_actions, widget=None, device=None):
+    def __init__(self, strategy, memory, num_actions, widget=None, device=None):
         self.current_step = 0
         self.strategy = strategy
+        self.memory = memory
         self.num_actions = num_actions
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') if not device else device
         self.total_reward = 0.0
@@ -144,7 +157,7 @@ class Agent:
         #         return torch.tensor([[policy_net(state).max(1)[1].view(1, 1)]], device=self.device)
 
     def step(self, e):
-        state = e.get_obs_agent()
+        state = e.get_obs_agent(self)
         state = torch.tensor(state, dtype=torch.float32, device=self.device).unsqueeze(0)
         # episode_durations = []
         # for timestep in count():
@@ -155,16 +168,16 @@ class Agent:
 
         action = self.select_action(state, self.widget.policy_net, e)
         r, reward, terminated = e.take_action(action.item(), self)
-        observation = e.get_obs_agent()
+        observation = e.get_obs_agent(self)
         if terminated:
             next_state = None
         else:
             next_state = torch.tensor(observation, dtype=torch.float32, device=self.device).unsqueeze(0)
-        self.widget.memory.push(state, action, next_state, reward)
+        self.memory.push(state, action, next_state, reward)
         state = next_state
 
-        if self.widget.memory.can_provide_sample(e.app.batch_size) and e.steps_learning>0:
-            transitions = self.widget.memory.sample(e.app.batch_size)
+        if self.memory.can_provide_sample(e.app.batch_size) and e.steps_learning>0:
+            transitions = self.memory.sample(e.app.batch_size)
             batch = Transition(*zip(*transitions))
             non_final_mask = torch.tensor(tuple(map(lambda s: s is not None,
                                                     batch.next_state)), device=self.device, dtype=torch.bool)
@@ -291,7 +304,6 @@ class Agent2:
         obs_agent_nextT = e.get_state_tensor2(a)
 
         # Сохраняем переход в буфере воспроизведения для каждого агента
-        #self.widget.experience_buffer.append([self.obs_agent, action, reward_scalar, obs_agent_next])
         self.memory.push(Experience(obs_agentT, action, rewardT, obs_agent_nextT))
 
         l = 0.
@@ -299,7 +311,6 @@ class Agent2:
         # Если буфер воспроизведения наполнен, начинаем обучать сеть
         if self.memory.can_provide_sample(e.app.batch_size) and e.steps_learning>0:
             # Получаем минивыборку из буфера воспроизведения
-            #exp_obs, exp_act, exp_rew, exp_next_obs = self.sample_from_expbuf(self.widget.experience_buffer, e.app.batch_size)
             experiences = self.memory.sample(e.app.batch_size)
             # Конвертируем данные состояния в тензоры
             obs_agentT, actions, rewards, obs_agentT_next = extract_tensors(experiences)
