@@ -245,15 +245,15 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
         super(FlyScatterV3, self).on_touch_up(touch)
 
     def simple_adapt(self, *args):
-        if self.mode ==  'Rotate adapt' or self.mode == 'Fly+Size+Rotate adapt': self.rotation += random.choice([-1, 1])
-        elif self.mode == 'Fly adapt' or self.mode == 'Fly+Size+Rotate adapt':
+        if self.mode ==  'Rotate' or self.mode == 'Fly+Size+Rotate': self.rotation += random.choice([-1, 1])
+        if self.mode == 'Fly' or self.mode == 'Fly+Size+Rotate':
             self.x += self.deltaposxy*self.velocity[0]
             self.y += self.deltaposxy*self.velocity[1]
             if self.x < 0 or (self.x + 2*self.width//3) > Window.width:
                 self.velocity[0] *= -1
             if self.y < 0 or (self.y + 2*self.height//3) > Window.height:
                 self.velocity[1] *= -1
-        elif self.mode == 'Size adapt' or self.mode == 'Fly+Size+Rotate adapt':
+        if self.mode == 'Size' or self.mode == 'Fly+Size+Rotate':
             w = self.children[1].width
             h = self.children[1].height
             if w < self.raw_width // 3: self.reduceW = 1
