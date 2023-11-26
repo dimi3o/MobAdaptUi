@@ -1,5 +1,5 @@
 import random
-import torch
+# import torch
 import agent
 import dqnvianumpy
 from collections import deque
@@ -36,25 +36,16 @@ class MainApp(App):
     AdaptUiOnOff = False
     total_reward = 0
     rewards_count = 0
-    reward_data = [0. for i in range(40)]
-    cumulative_reward_data = [0. for i in range(40)]
-    loss_data = [0. for i in range(40)]
-    m_loss_data = [0. for i in range(40)]
+    reward_data = []
+    cumulative_reward_data = []
+    loss_data = []
+    m_loss_data = []
     target_ui_vect = [[0. for j in range(4)] for i in range(40)]
     current_ui_vect = [[0. for j in range(4)] for i in range(40)]
     sliders_reward = []
     strategy = None
     #DQN hyperparameters
-    # PyTorch
-    # BATCH_SIZE = 128
-    # GAMMA = 0.99
-    # EPS_START = 0.9
-    # EPS_END = 0.05
-    # EPS_DECAY = 1000
-    # TAU = 0.005
-    # LR = 1e-4
-    # MEMORY_SIZE = 10000
-    batch_size = 128 #256
+    batch_size = 128
     gamma = 0.99
     eps_start = 0.9
     eps_end = 0.05
@@ -65,6 +56,7 @@ class MainApp(App):
     memory_size = 10000
     lr = 1e-3
     steps_learning = 1
+    hidden_layer = 64
 
     def __init__(self, **kwargs):
         super(MainApp, self).__init__(**kwargs)
@@ -73,11 +65,11 @@ class MainApp(App):
         self.modes = ('DQN', 'GAN', 'Fly', 'Size', 'Rotate', 'Fly+Size+Rotate')
         self.cols_rows = ('1х1', '2х2', '3х3', '4х4', '5х5', '6х6', '8x5')
         self.objects = ('Apps', 'Foods', 'Widgets')
-        self.kitchen = ('rus', 'eur', 'asia')
+        self.kitchen = ('rus', 'eur', 'asia', 'ui vect')
         self.episodes = ('200', '2000', '20000', '200000')
         self.modeargs = ('train', 'test')
         self.r_modeargs = ('map', 'weights', 'stats')
-        self.usability_metrics = ['DM', 'TeS', 'BL', 'Tread', 'Tpointing', 'Tlocal', 'LA', 'TV', 'BH', 'BV']
+        self.usability_metrics = ['DM', 'TS', 'BL', 'Tr', 'Tp', 'Tl', 'LA', 'TV', 'BH', 'BV']
 
     def on_resize_my(self, oldsize, newsize):
         self.reward_graph.height = self.graph_layout.height = Window.height * 5 / 7
@@ -107,7 +99,7 @@ class MainApp(App):
         self.episodespinner = Spinner(text=self.episodes[1], values=self.episodes, size_hint_x=None, width='50dp', background_color=(0.225, 0.155, 0.564, 1))
         self.modespinner = Spinner(text="DQN", values=self.modes, background_color=(0.127,0.854,0.561,1))
         self.adapt_btn = Button(text='ADAPT UI', size_hint_y=None, height='30dp', background_color=(1, 0, 0, 1), on_press=self.adapt_ui) #on_press=lambda null: self.show_popup('MARLMUI starting... '+self.modespinner.text, 'Info'))
-        test_btn = Button(text='TEST UI', size_hint_y=None, height='30dp', size_hint_x=None, width='100dp', background_color=(0, 0, 1, 1), on_press=lambda null: self.adapt_ui(self, False))
+        test_btn = Button(text='TEST UI', size_hint_y=None, height='30dp', size_hint_x=None, width='100dp', background_color=(0, 0, 1, 1), on_press=lambda null: self.adapt_ui(self, False, True))
         quit_btn = Button(text='QUIT', size_hint_y=None, height='30dp', background_color=(0.9, 0.9, 0.9, 1), on_press=lambda null: self.get_running_app().stop())
         sett_btn = Button(text='SETTINGS', size_hint_y=None, height='30dp', background_color=(0.2, 0.2, 0.2, 1), on_press=lambda null: self.to_screen('settings', 'left'))
         self.footpanel = self.ihbl([quit_btn, self.modespinner, self.episodespinner, self.adapt_btn, test_btn, sett_btn])
@@ -116,6 +108,28 @@ class MainApp(App):
         with self.footpanel.canvas.before:
             Color(0.827, 0.827, 0.827, 1.)
             self.rect_footpanel = Rectangle()
+
+        # SETTINGS SCREEN, params
+        self.root5 = BoxLayout(orientation='vertical', padding=10)  # params
+        self.text_hidden_layer = TextInput(text='64', password=False)
+        self.root5.add_widget(self.ihbl([Label(text='Hidden layer:', color=(0, 0, 0, 1)), self.text_hidden_layer]))
+        self.text_memory_size = TextInput(text='10000', password=False)
+        self.root5.add_widget(self.ihbl([Label(text='Memory Size:', color=(0, 0, 0, 1)), self.text_memory_size]))
+        self.text_batch_size = TextInput(text='128', password=False)
+        self.root5.add_widget(self.ihbl([Label(text='Batch Size:', color=(0, 0, 0, 1)), self.text_batch_size]))
+        self.text_gamma = TextInput(text='0.99', password=False)
+        self.root5.add_widget(self.ihbl([Label(text='Gamma:', color=(0, 0, 0, 1)), self.text_gamma]))
+        self.text_lr = TextInput(text='1e-3', password=False)
+        self.root5.add_widget(self.ihbl([Label(text='Learning rate:', color=(0, 0, 0, 1)), self.text_lr]))
+        self.text_target_update = TextInput(text='30', password=False)
+        self.root5.add_widget(self.ihbl([Label(text='Target update:', color=(0, 0, 0, 1)), self.text_target_update]))
+        self.text_eps_start = TextInput(text='0.9', password=False)
+        self.root5.add_widget(self.ihbl([Label(text='Eps Start:', color=(0, 0, 0, 1)), self.text_eps_start]))
+        self.text_eps_end = TextInput(text='0.05', password=False)
+        self.root5.add_widget(self.ihbl([Label(text='Eps End:', color=(0, 0, 0, 1)), self.text_eps_end]))
+        self.text_eps_decay_steps = TextInput(text='1000', password=False)
+        self.root5.add_widget(self.ihbl([Label(text='Eps Decay Steps:', color=(0, 0, 0, 1)), self.text_eps_decay_steps]))
+        self.root5.add_widget(Label(text='REBUILD after modify!', color=(1, 0, 0, 1), size_hint_y=None, height='30dp'))
 
         # MAIN CONTENT
         self.mainscreen_widgets = BoxLayout(orientation='vertical', padding=0, spacing=0)
@@ -137,18 +151,18 @@ class MainApp(App):
 
         # SETTINGS SCREEN, reward func tab
         self.targetUiVect = TextInput(password=False, multiline=True) #, readonly=True)
-        cur_sl_label = Label(text='_._', color=(1, 0, 0, 1))
+        cur_sl_label = Label(text='REWARDS: _._', color=(1, 0, 0, 1))
         temp_sliders = [cur_sl_label]; sliders = []; checkboxes = []; values = []
         for i in range(17):
-            param = 'nx' if i==0 else 'ny' if i==1 else 'ns' if i==2 else 'nr' if i==3 else 'nt' if i==4 else 'penalty+'if i==5 else 'penalty-' if i==6 else self.usability_metrics[i-7]
-            sl_label = Label(text=f'R{str(i+1)} ({param}):', color=(0, 0, 0, 1), halign='auto') #size_hint_x=None, width='90dp',
-            value = 0.01 if i == 5 else .95 if i == 4 else .15 if i == 3 else 0.55 if i < 5 else -.95 if i<7 else .95
+            param = 'nx' if i==0 else 'ny' if i==1 else 'ns' if i==2 else 'nr' if i==3 else 'nt' if i==4 else 'p+'if i==5 else 'p-' if i==6 else self.usability_metrics[i-7]
+            sl_label = Label(text=f'{param}', color=(0, 0, 0, 1), size_hint_x=None, width='20dp', halign='center')#, halign='auto') #size_hint_x=None, width='90dp',
+            value = 0.01 if i == 5 else .95 if i == 4 else 0.55 if i < 5 else -.95 if i<7 else .95
             values.append(value)
             slider = Widgets.get_random_widget('Slider', -2., 2., value, 0.01)
             labelcallback = lambda instance, value: self.OnSliderRewardChangeValue(cur_sl_label, value)
             slider.bind(value=labelcallback)
             sliders.append(slider)
-            reward_flag = CheckBox(active=True, color=(0, 0, 1, 1), size_hint_x=None, width='10dp')
+            reward_flag = CheckBox(active=True, color=(0, 0, 1, 1), size_hint_x=None, width='20dp')
             checkboxes.append(reward_flag)
             reward_flagcallback = lambda instance, active: self.reward_flag_change(instance, sliders, checkboxes, values)
             reward_flag.bind(active=reward_flagcallback)
@@ -156,14 +170,14 @@ class MainApp(App):
             self.sliders_reward.append(slider)
         btn_get_vect_state = Button(text='get', size_hint_y=None, height='30dp', background_color=(0, 0, 1, 1), on_press=self.get_current_vect_state)
         btn_set_vect_state = Button(text='set', size_hint_y=None, height='30dp', background_color=(1, 0, 0, 1), on_press=self.set_current_vect_state)
-        self.root3.add_widget(self.ihbl([self.ivbl(temp_sliders),self.ivbl([self.ihbl([Label(text='UI State vector:',color=(1, 0, 0, 1),size_hint_y=None,height='30dp'),btn_get_vect_state,btn_set_vect_state]),self.targetUiVect], my_width=False)], my_height=False))
+        self.root3.add_widget(self.ihbl([self.ivbl(temp_sliders),self.ivbl([self.ihbl([Label(text='UI vect:',color=(1, 0, 0, 1),size_hint_y=None,height='30dp'),btn_get_vect_state,btn_set_vect_state]),self.targetUiVect], my_width=False)], my_height=False))
         self.kitchenspinner = Spinner(text=self.kitchen[0], values=self.kitchen, background_color=(0.027, 0.954, 0.061, 1))
         self.kitchenspinner.bind(text=self.target_ui_selected_value)
         self.root3.add_widget(self.ihbl([Label(text='Kitchen:', color=(0, 0, 1, 1)),self.kitchenspinner]))
 
         # SETTINGS SCREEN, graph tab
         self.graph_widget_id = Spinner(text='1', values=[str(j) for j in range(1, 41)], background_color=(0.327, 0.634, 0.161, 1))
-        self.root2.add_widget(self.ihbl([Label(text='REWARD/LOSS graph for widget id:', color=(0, 0, 0, 1)), self.graph_widget_id]))
+        self.root2.add_widget(self.ihbl([Label(text='REWARD/LOSS widget id:', color=(0, 0, 0, 1)), self.graph_widget_id]))
         self.reward_graph = Widgets.get_graph_widget(.5, .5, 0, .1, 0, .1, 'Time, [sec]', WhiteBackColor)
         self.graph_layout = BoxLayout(orientation='horizontal', size_hint_y=None)
         self.reward_graph.height = self.graph_layout.height = Window.height*5/7
@@ -179,16 +193,19 @@ class MainApp(App):
         self.root4.add_widget(self.ihbl([Label(text='Mode:', color=(1, 0, 1, 1)), self.dqnmodespinner, self.dqnr_modespinner, self.test_dqn_btn]))
 
         tp = TabbedPanel(do_default_tab=False, background_color=(0,0,0,0))
-        reward_th = TabbedPanelHeader(text='Graph')
+        reward_th = TabbedPanelHeader(text='LOSS')
         tp.add_widget(reward_th)
         reward_th.content = self.root2
-        uivect_th = TabbedPanelHeader(text='Reward Func')
+        uivect_th = TabbedPanelHeader(text='Reward')
         tp.add_widget(uivect_th)
         uivect_th.content = self.root3
-        dqnvect_th = TabbedPanelHeader(text='DQN test')
+        params_th = TabbedPanelHeader(text='Params')
+        tp.add_widget(params_th)
+        params_th.content = self.root5
+        self.root1.add_widget(tp)
+        dqnvect_th = TabbedPanelHeader(text='Frozen')
         tp.add_widget(dqnvect_th)
         dqnvect_th.content = self.root4
-        self.root1.add_widget(tp)
 
         btn2 = Button(text='MAIN SCREEN', size_hint_y=None, height='30dp', background_color=(0.2, 0.2, 0.2, 1),
                       on_press=lambda null: self.to_screen('mainscreen', 'right'))
@@ -204,7 +221,7 @@ class MainApp(App):
 
         return self.sm
 
-    def adapt_ui(self, instance, learning=True):
+    def adapt_ui(self, instance, learning=True, test=False):
         m = self.modespinner.text
         if m == 'GAN':
             self.show_popup('This adapt ui in the pipeline...', self.modespinner.text)
@@ -226,6 +243,7 @@ class MainApp(App):
                 s.env.steps_left = int(self.episodespinner.text)*len(self.FlyScatters)
                 s.env.done = False
                 s.env.steps_learning = int(s.env.steps_left * self.steps_learning) if learning else 0
+                if test: s.agent.strategy = agent.EpsilonGreedyStrategy(self.eps_end, self.eps_end, self.eps_decay, self.eps_decay_steps)
 
             self.adapt_btn.background_color = (0.127,0.854,0.561,1) if s.emulation else (1, 0, 0, 1)
         if self.AdaptUiOnOff:
@@ -247,7 +265,6 @@ class MainApp(App):
     def _update_clock(self, dt):
         widget_id = int(self.graph_widget_id.text)-1
         #reward = self.reward_data[widget_id]
-        # reward = self.cumulative_reward_data[widget_id]
         reward = self.m_loss_data[widget_id]
         loss = self.loss_data[widget_id]
         #reward = self.total_reward
@@ -267,11 +284,14 @@ class MainApp(App):
         Objects = self.objectspinner.text
         rows = int(TextSize[0])
         cols = int(TextSize[2])
+        self.reward_data = [0. for i in range(40)]
+        self.cumulative_reward_data = [0. for i in range(40)]
+        self.loss_data = [0. for i in range(40)]
+        self.m_loss_data = [0. for i in range(40)]
         random.shuffle(self.IdsPngs)
 
-        #print('W =', Window.width, ',w =', Window.width // cols, ',H =', Window.height, ',h =', Window.height // (rows + 1))
-
         # DQN Environment
+        self.set_hyperparams()
         steps_left = int(self.episodespinner.text)
         steps_learning = int((int(self.episodespinner.text) - self.batch_size) * self.steps_learning)
         n_agents = rows*cols
@@ -323,12 +343,23 @@ class MainApp(App):
         s.env = e
         s.set_vect_state()
         s.agent = agent.Agent3(s.app.strategy, deque(maxlen=self.memory_size), e.num_actions_available(), s)
-        s.policy_net = dqnvianumpy.model.neural_network(e.num_state_available(s.agent) - 2, 4, e.num_actions_available(), self.lr)
-        s.target_net = dqnvianumpy.model.neural_network(e.num_state_available(s.agent) - 2, 4, e.num_actions_available(), self.lr)
+        s.policy_net = dqnvianumpy.model.neural_network(e.num_state_available(s.agent)-1, self.hidden_layer, e.num_actions_available(), self.lr)
+        s.target_net = dqnvianumpy.model.neural_network(e.num_state_available(s.agent)-1, self.hidden_layer, e.num_actions_available(), self.lr)
         s.target_net.load_state_dict(s.policy_net)
         #### DQN INIT end
 
-    def OnSliderRewardChangeValue(self, label, value): label.text=f"{value:.{2}f}"
+    def set_hyperparams(self):
+        self.hidden_layer = int(self.text_hidden_layer.text)
+        self.memory_size = int(self.text_memory_size.text)
+        self.batch_size = int(self.text_batch_size.text)
+        self.gamma = float(self.text_gamma.text)
+        self.lr = float(self.text_lr.text)
+        self.target_update = int(self.text_target_update.text)
+        self.eps_start = float(self.text_eps_start.text)
+        self.eps_end = float(self.text_eps_end.text)
+        self.eps_decay_steps = int(self.text_eps_decay_steps.text)
+
+    def OnSliderRewardChangeValue(self, label, value): label.text=f"REWARDS: {value:.{2}f}"
 
     def reward_flag_change(self, instance, sliders, checkboxes, values):
         i = checkboxes.index(instance)
@@ -372,11 +403,15 @@ class MainApp(App):
         print('-- vect state updated from target UI --')
 
     def target_ui_selected_value(self, spinner, text):
-        self.target_ui_vect = Widgets.target_ui(text)
+        if text == 'ui vect':
+            self.get_current_vect_state(spinner)
+            self.target_ui_vect = [v for v in self.current_ui_vect]
+        else:
+            self.target_ui_vect = Widgets.target_ui(text)
         # print(self.target_ui_vect[1][1])
         self.targetUiVect.text = str(self.target_ui_vect).replace(' ','')
 
-    # Need Asynchronous app
+    # May Be Need Asynchronous app
     # https://kivy.org/doc/stable/api-kivy.app.html#module-kivy.app
     def test_dqn(self, instance):
         # self.cclear()
@@ -414,7 +449,7 @@ class MainApp(App):
         for w in widjets: hor.add_widget(w)
         return hor
 
-    def ivbl(self, widjets, my_width=True):
+    def ivbl(self, widjets, my_width=False):
         vert = BoxLayout(orientation='vertical', padding=0, spacing=0)
         if my_width: vert.size_hint_x=None; vert.width=f'{Window.width//2}dp'
         for w in widjets: vert.add_widget(w)

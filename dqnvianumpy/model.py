@@ -22,7 +22,7 @@ def softmax(x):
 
 class neural_network():
     def __init__(self, input_shape, hidden_neurons, output_shape, learning_rate):
-        self.l1_weights = np.random.normal(scale=0.1, size=(hidden_neurons, hidden_neurons))
+        self.l1_weights = np.random.normal(scale=0.1, size=(input_shape, hidden_neurons))
         self.l1_biases = np.zeros(hidden_neurons)
 
         self.l2_weights = np.random.normal(scale=0.1, size=(hidden_neurons, output_shape))

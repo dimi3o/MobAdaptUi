@@ -1,6 +1,5 @@
 import random
 import math as m
-from agent import plot
 from kivy.metrics import dp
 from kivy.lang import Builder
 from kivy.uix.widget import Widget
@@ -176,6 +175,7 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
         ns = min(1, max(0, (self.scale - 0.4) / (2 - 0.4)))
         nr = ((self.rotation-180)/180 + 1) / 2
         self.vect_state = [int(self.id), int(self.taps), nx, ny, ns, nr]
+        return self.vect_state
 
     def update_vect_state_from(self, v):
         self.scale = v[2] * 1.6 + 0.4
