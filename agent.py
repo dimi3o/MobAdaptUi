@@ -2,6 +2,7 @@ import math
 import random
 # import matplotlib
 # import matplotlib.pyplot as plt
+
 import numpy as np
 from collections import namedtuple, deque
 from itertools import count
@@ -9,6 +10,9 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
+# import os
+# os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
+
 #import torchvision.transforms as T
 
 class Environment:
@@ -93,7 +97,7 @@ class Environment:
         #return self.last_reward[id], cur_reward[4]
         return cur_reward[:4], cur_reward[4]
 
-    def take_action(self, action, agent):
+    def take_action(self, action, agent, tensor=False):
         penalty = agent.widget.change_pos_size(action) #.data.item())
         self.steps_left -= 1
         if self.is_done(): self.done = True
@@ -101,7 +105,8 @@ class Environment:
         reward = sum(r_pos) + r_taps + penalty
         #reward = sum(r_pos)/len(r_pos) + r_taps + penalty
         terminated = True if self.steps_left==0 else False
-        return reward, torch.tensor([reward], device=agent.device), terminated
+        if tensor: return reward, torch.tensor([reward], device=agent.device), terminated
+        return reward, terminated
         #rewards.sort()  #reverse=True)
         #return sum(rewards)/100
         #return min(rewards[:3])
@@ -280,7 +285,7 @@ class Agent2:
 
     def step(self, e):
         # Получаем состояние среды для независимого агента IQL
-        obs_agentT = e.get_state_tensor2(a) #Храним историю состояний среды один шаг
+        obs_agentT = e.get_state_tensor2(self) #Храним историю состояний среды один шаг
         #obs_agentT = torch.FloatTensor([self.obs_agent], device=self.device)
 
         # Передаем состояние среды в основную нейронную сеть
@@ -301,7 +306,7 @@ class Agent2:
         reward, rewardT, _ = self.take_action(action, self)
 
         # Получаем новое состояние среды
-        obs_agent_nextT = e.get_state_tensor2(a)
+        obs_agent_nextT = e.get_state_tensor2(self)
 
         # Сохраняем переход в буфере воспроизведения для каждого агента
         self.memory.push(Experience(obs_agentT, action, rewardT, obs_agent_nextT))
@@ -371,6 +376,77 @@ class Agent2:
         # Собираем данные для графиков
         return reward
 
+class Agent3:
+    loss_data = [0]
+    total_loss = [0]
+    m_loss = [0]
+    widget=None
+
+    def __init__(self, strategy, memory, num_actions, widget=None):
+        self.current_step = 0
+        self.strategy = strategy
+        self.memory = memory
+        self.qofa_out = num_actions # Определяем выходной размер нейронной сети
+        self.total_reward = 0.0
+        self.widget = widget
+
+    # Выбираем возможное действие с максимальным Q-значением в зависимости от эпсилон
+    def select_action(self, action_probability, avail_actions_ind):
+        epsilon = self.strategy.get_exploration_rate2(self.current_step)
+        self.current_step += 1
+        # Исследуем пространство действий
+        if np.random.rand() < epsilon:
+            return np.random.choice(avail_actions_ind)
+        else:
+            action = np.argmax(action_probability)
+            return action #if action in avail_actions_ind else np.random.choice(avail_actions_ind)
+
+    def step(self, e):
+        # Получаем состояние среды для независимого агента IQL
+        state = e.get_obs_agent(self) #Храним историю состояний среды один шаг
+
+        # Конвертируем данные в numpy
+        action_probability = self.widget.policy_net.predict(np.array(state))
+
+        avail_actions_ind = self.widget.available_actions()
+        # Выбираем возможное действие агента с учетом
+        # максимального Q-значения и параметра эпсилон
+        action = self.select_action(action_probability, avail_actions_ind)
+
+        # Передаем действия агентов в среду, получаем награду
+        reward, done = e.take_action(action, self)
+
+        # Получаем новое состояние среды
+        next_state = e.get_obs_agent(self)
+
+        # Сохраняем переход в буфере воспроизведения для каждого агента
+        # self.memory.push(Experience(obs_agentT, action, rewardT, obs_agent_nextT))
+        self.memory.append((state, action, reward, next_state))
+
+        if not done and e.app.batch_size < len(self.memory) and e.steps_learning>0:
+            minibatch = random.sample(list(self.memory), e.app.batch_size)
+
+            state = np.array([i[0] for i in minibatch])
+            action = [i[1] for i in minibatch]
+            rewards = [i[2] for i in minibatch]
+            next_state = np.array([i[3] for i in minibatch])
+
+            q_value = self.widget.policy_net.predict(np.array(state))
+            ns_model_pred = self.widget.target_net.predict(np.array(next_state))
+
+            for i in range(0, e.app.batch_size):
+                q_value[i][action[i]] = rewards[i] + e.app.gamma * np.max(ns_model_pred[i])
+
+            loss = self.widget.policy_net.fit(state, q_value)
+            self.loss_data.append(loss)
+            # self.total_loss.append(loss)
+            self.m_loss.append(np.mean(self.loss_data[-1000:]))
+
+            # Подсчет количества шагов обучения
+            e.steps_learning -= 1
+
+        # Собираем данные для графиков
+        return reward
 
 class QValues():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')

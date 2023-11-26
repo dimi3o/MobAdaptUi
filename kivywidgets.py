@@ -153,17 +153,21 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
     def MARL_core(self):
         r = self.agent.step(self.env)
 
-        target_net_state_dict = self.target_net.state_dict()
-        policy_net_state_dict = self.policy_net.state_dict()
-        for key in policy_net_state_dict:
-            target_net_state_dict[key] = policy_net_state_dict[key] * self.app.TAU + target_net_state_dict[key] * (1 - self.app.TAU)
-        self.target_net.load_state_dict(target_net_state_dict)
+        # target_net_state_dict = self.target_net.state_dict()
+        # policy_net_state_dict = self.policy_net.state_dict()
+        # for key in policy_net_state_dict:
+        #     target_net_state_dict[key] = policy_net_state_dict[key] * self.app.TAU + target_net_state_dict[key] * (1 - self.app.TAU)
+        # self.target_net.load_state_dict(target_net_state_dict)
         
 
         # Синхронизируем веса основной и целевой нейронной сети каждые target_update шагов
         # if self.env.steps_left % self.app.target_update == 0:
         #     self.target_net.load_state_dict(self.policy_net.state_dict())
         #     # print('--- target_net update ---')
+
+        if self.env.steps_left % self.app.target_update == 0:
+            self.target_net.load_state_dict(self.policy_net)
+
         return r
 
     def set_vect_state(self):

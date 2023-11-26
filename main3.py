@@ -1,6 +1,7 @@
 import random
 import torch
 import agent
+import dqnvianumpy
 from collections import deque
 from dqnvianumpy.q_learning import train_main
 from dqnvianumpy.q_learning import test_main
@@ -59,7 +60,7 @@ class MainApp(App):
     eps_end = 0.05
     eps_decay = 0.001
     eps_decay_steps = 1000
-    target_update = 100
+    target_update = 10
     TAU = 0.005 # TAU is the update rate of the target network
     memory_size = 10000
     lr = 1e-3
@@ -281,7 +282,8 @@ class MainApp(App):
             for j in range(cols):
                 s = FlyScatterV3(do_rotation=True, do_scale=True, auto_bring_to_front=False, do_collide_after_children=False)
                 s.app = self
-                self.DQN_init(s, e) #### DQN INIT
+                # self.DQN_init(s, e) #### DQN INIT
+                self.DQN_init_numpy(s, e)
                 hor.add_widget(s)
                 s.id = ids = self.IdsPngs[i*cols+j]
                 s.grid_rect = Widgets.get_random_widget('LineRectangle', 0, 0, Window.width // cols, Window.height // (rows + 1), f'S{i*cols+j}')
@@ -305,22 +307,25 @@ class MainApp(App):
         s.env = e
         s.set_vect_state()
         s.agent = agent.Agent(s.app.strategy, agent.ReplayMemoryPyTorch(self.memory_size), e.num_actions_available(), s)
+        # s.agent = agent.Agent2(s.app.strategy, agent.ReplayMemoryPyTorch(self.memory_size), e.num_actions_available(), s) # DQN_init2
         s.policy_net = agent.get_nn_module(e.num_state_available(s.agent) - 2, s.agent.device)
         s.target_net = agent.get_nn_module(e.num_state_available(s.agent) - 2, s.agent.device)
+        # s.policy_net = agent.get_nn_module2(e.num_state_available(s.agent) - 2, s.agent.device) # DQN_init2
+        # s.target_net = agent.get_nn_module2(e.num_state_available(s.agent) - 2, s.agent.device) # DQN_init2
         s.target_net.load_state_dict(s.policy_net.state_dict())
         s.target_net.eval()
         s.optimizer = agent.get_optimizer_AdamW(s.policy_net, self.lr)
+        # s.optimizer = agent.get_optimizer_Adam(s.policy_net, self.lr) # DQN_init2
         #### DQN INIT end
 
-    def DQN_init2(self, s, e):
+    def DQN_init_numpy(self, s, e):
         #### DQN INIT start
         s.env = e
         s.set_vect_state()
-        s.agent = agent.Agent2(s.app.strategy, agent.ReplayMemoryPyTorch(self.memory_size), e.num_actions_available(), s)
-        s.policy_net = agent.get_nn_module2(e.num_state_available(s.agent) - 2, s.agent.device)
-        s.target_net = agent.get_nn_module2(e.num_state_available(s.agent) - 2, s.agent.device)
-        s.target_net.eval()
-        s.optimizer = agent.get_optimizer_Adam(s.policy_net, self.lr)
+        s.agent = agent.Agent3(s.app.strategy, deque(maxlen=self.memory_size), e.num_actions_available(), s)
+        s.policy_net = dqnvianumpy.model.neural_network(e.num_state_available(s.agent) - 2, 4, e.num_actions_available(), self.lr)
+        s.target_net = dqnvianumpy.model.neural_network(e.num_state_available(s.agent) - 2, 4, e.num_actions_available(), self.lr)
+        s.target_net.load_state_dict(s.policy_net)
         #### DQN INIT end
 
     def OnSliderRewardChangeValue(self, label, value): label.text=f"{value:.{2}f}"

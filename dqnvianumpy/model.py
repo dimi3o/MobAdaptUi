@@ -6,7 +6,6 @@ def linear(x, derivation=False):
     """ activation function linear """
     return 1 if derivation else x
 
-
 def relu(x, derivation=False):
     """ activation function relu """
     return 1.0 * (x > 0) if derivation else np.maximum(x, 0)
@@ -16,6 +15,10 @@ def step_function(x):
     """ activation step function """
     return 1 if x >= 0 else 0
 
+def softmax(x):
+    """Compute softmax values for each sets of scores in x."""
+    e_x = np.exp(x - np.max(x))
+    return e_x / e_x.sum()
 
 class neural_network():
     def __init__(self, input_shape, hidden_neurons, output_shape, learning_rate):
@@ -77,7 +80,8 @@ class neural_network():
         u2 = np.dot(l1o, self.l2_weights) + self.l2_biases
         l2o = linear(u2)
 
-        return l2o
+        return softmax(l2o)
+        # return l2o
 
     def save_model(self, name):
         """
@@ -93,6 +97,18 @@ class neural_network():
         with open("{}".format(name), "rb") as model:
             tmp_model = pickle.load(model)
 
+        self.l1_weights = tmp_model.l1_weights
+        self.l1_biases = tmp_model.l1_biases
+
+        self.l2_weights = tmp_model.l2_weights
+        self.l2_biases = tmp_model.l2_biases
+
+        self.learning_rate = tmp_model.learning_rate
+
+    def load_state_dict(self, tmp_model):
+        """
+        method loads state dict from model
+        """
         self.l1_weights = tmp_model.l1_weights
         self.l1_biases = tmp_model.l1_biases
 
