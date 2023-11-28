@@ -52,7 +52,7 @@ class Environment:
     # usability_metrics = ['DM', 'TeS', 'BL', 'Tread', 'Tpointing', 'Tlocal', 'LA', 'TV', 'BH', 'BV']
     def get_rewards(self, agent):
         cuv = agent.widget.vect_state #0 - self.id, 1 - self.taps, 2 - self.nx, 3 - self.ny, 4 - self.ns, 5 - self.nr
-        id = cuv[0] - 1
+        id = cuv[0] - 1 # widjet id
         tuv = self.app.target_ui_vect[id] # 0 - self.nx, 1 - self.ny, 2 - self.ns, 3 - self.nr
         cur_reward = []
         cur_reward.append(1 - abs(tuv[0] - cuv[2]))  # nx, position X
@@ -68,9 +68,10 @@ class Environment:
             # local reward
             for i in range(5):
                 reward = self.app.sliders_reward[i].value
-                if reward == 0: continue
                 delta = delta_cur_last_reward[i]
-                cur_reward[i] = reward if delta > 0 else penalty if delta < 0 else 0
+                cur_reward[i] = 0 if reward==0 else reward if delta > 0 else penalty if delta < 0 else 0
+                if id==0 and i==3:# and cur_reward[i]!=0 and cur_reward[i]!=-0.95 and cur_reward[i]!=0.55:
+                    print(f'cuv{i}={temp_cur_reward[i]}  cur{i}={cur_reward[i]}')
             # usability metrics
             for i in range(7,len(self.app.sliders_reward)):
                 if self.app.sliders_reward[i].value==0: continue
@@ -78,7 +79,6 @@ class Environment:
         else:
             cur_reward = [0. for _ in cur_reward]
         self.last_reward[id] = temp_cur_reward
-        #return self.last_reward[id], cur_reward[4]
         return cur_reward[:4], cur_reward[4]
 
     def take_action(self, action, agent, tensor=False):

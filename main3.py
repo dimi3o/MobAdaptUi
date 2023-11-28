@@ -129,7 +129,7 @@ class MainApp(App):
         self.root5.add_widget(self.ihbl([Label(text='Eps End:', color=(0, 0, 0, 1)), self.text_eps_end]))
         self.text_eps_decay_steps = TextInput(text='1000', password=False)
         self.root5.add_widget(self.ihbl([Label(text='Eps Decay Steps:', color=(0, 0, 0, 1)), self.text_eps_decay_steps]))
-        self.root5.add_widget(Label(text='REBUILD after modify!', color=(1, 0, 0, 1), size_hint_y=None, height='30dp'))
+        self.root5.add_widget(Label(text='REBUILD after modify!', color=(1, 0, 0, 1)))
 
         # MAIN CONTENT
         self.mainscreen_widgets = BoxLayout(orientation='vertical', padding=0, spacing=0)

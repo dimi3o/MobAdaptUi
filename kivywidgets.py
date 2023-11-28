@@ -173,8 +173,10 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
         nx = (self.x + self.size[0]/self.scale) / Window.width
         ny = (self.y + self.size[1]/self.scale) / Window.height
         ns = min(1, max(0, (self.scale - 0.4) / (2 - 0.4)))
-        nr = ((self.rotation-180)/180 + 1) / 2
-        self.vect_state = [int(self.id), int(self.taps), nx, ny, ns, nr]
+        # nr = ((self.rotation-180)/180 + 1) / 2
+        nr = abs((self.rotation - 180) / 360) * 2
+        nt = min(1, self.taps / 10)
+        self.vect_state = [int(self.id), nt, nx, ny, ns, nr]
         return self.vect_state
 
     def update_vect_state_from(self, v):
