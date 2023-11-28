@@ -46,10 +46,6 @@ class Environment:
     def action_space_sample(self):
         return random.choice(self.action_space)
 
-    # Usability model: Показатель плотности (DM), Удобочитаемость (Размер выделенного элемента, TeS), Баланс (BL)
-    # Todi AUI: считывание элемента (Tread), наведение курсора (Tpointing), локальный поиск (Tlocal)
-    # QUIM: Соответствие макета (LA), Видимость задач (TV), Горизонтальный баланс(BH), Вертикальный баланс (BV)
-    # usability_metrics = ['DM', 'TeS', 'BL', 'Tread', 'Tpointing', 'Tlocal', 'LA', 'TV', 'BH', 'BV']
     def get_rewards(self, agent):
         cuv = agent.widget.vect_state #0 - self.id, 1 - self.taps, 2 - self.nx, 3 - self.ny, 4 - self.ns, 5 - self.nr
         id = cuv[0] - 1 # widjet id
@@ -69,26 +65,82 @@ class Environment:
             for i in range(5):
                 reward = self.app.sliders_reward[i].value
                 delta = delta_cur_last_reward[i]
-                cur_reward[i] = 0 if reward==0 else reward if delta > 0 else penalty if delta < 0 else 0
+                cur_reward[i] = 0 if reward == 0 else cur_reward[i] if delta > 0 else penalty if delta < 0 else 0
+                # cur_reward[i] = 0 if reward==0 else reward if delta > 0 else penalty if delta < 0 else 0
                 # if id==15 and i==3: print(f'cuv{i}={temp_cur_reward[i]}  cur{i}={cur_reward[i]}')
-            # usability metrics
-            for i in range(7,len(self.app.sliders_reward)):
-                if self.app.sliders_reward[i].value==0: continue
-                pass
         else:
             cur_reward = [0. for _ in cur_reward]
         self.last_reward[id] = temp_cur_reward
         return cur_reward[:4], cur_reward[4]
 
-    def get_rewards2(self, agent, action):
-        pass
+    # action: 0 - left, 1 - right, 2 - up, 3 - down, 4 - more, 5 - less
+    def get_local_reward(self, agent, action):
+        cuv = agent.widget.vect_state  # 0 - self.id, 1 - self.taps, 2 - self.nx, 3 - self.ny, 4 - self.ns, 5 - self.nr
+        id = cuv[0] - 1  # widjet id
+        tuv = self.app.target_ui_vect[id]  # 0 - self.nx, 1 - self.ny, 2 - self.ns, 3 - self.nr
+        cur_reward = 0
+        if action==0 or action==1: cur_reward = 1 - abs(tuv[0] - cuv[2]); i = 0  # nx, position X = action: 0 - left, 1 - right
+        elif action==2 or action==3: cur_reward = 1 - abs(tuv[1] - cuv[3]); i = 1  # ny, position Y = action: 2 - up, 3 - down
+        elif action==4 or action==5: cur_reward = 1 - abs(tuv[2] - cuv[4]); i = 2  # ns, scale = action: 4 - more, 5 - less
+        elif action==6 or action==7: cur_reward = 1 - abs(tuv[3] - cuv[5]); i = 3  # nr, rotate = action: 6 - rotate-, 7 - rotate+
+        else: return 0
+        temp_cur_reward = cur_reward
+        if self.last_reward.get(id, None) is not None:
+            reward = self.app.sliders_reward[i].value
+            penalty_minus = self.app.sliders_reward[6].value
+            delta = cur_reward - self.last_reward[id][i]
+            cur_reward = 0 if reward == 0 else (1-cur_reward) if delta > 0 else penalty_minus if delta < 0 else 0
+            # if id == 15 and i == 3: print(f'cuv{i}={temp_cur_reward}  cur{i}={cur_reward}')
+        else:
+            cur_reward = 0
+            self.last_reward[id] = [0. for _ in range(5)]
+        self.last_reward[id][i] = temp_cur_reward
+        return cur_reward
+
+    def get_activation_reward(self, agent):
+        cuv = agent.widget.vect_state  # 0 - self.id, 1 - self.taps, 2 - self.nx, 3 - self.ny, 4 - self.ns, 5 - self.nr
+        id = cuv[0] - 1  # widjet id
+        cur_reward = min(1, min(1, cuv[1] / 10.))
+        temp_cur_reward = cur_reward
+        i = 4  # activation set
+        if self.last_reward.get(id, None) is not None:
+            reward = self.app.sliders_reward[i].value
+            delta = cur_reward - self.last_reward[id][i]
+            cur_reward = 0 if reward == 0 else cur_reward if delta > 0 else 0
+        else:
+            cur_reward = 0
+            self.last_reward[id] = [0. for _ in range(5)]
+        self.last_reward[id][i] = temp_cur_reward
+        return cur_reward
+
+    # Usability model: Показатель плотности (DM), Удобочитаемость (Размер выделенного элемента, TeS), Баланс (BL)
+    # Todi AUI: считывание элемента (Tread), наведение курсора (Tpointing), локальный поиск (Tlocal)
+    # QUIM: Соответствие макета (LA), Видимость задач (TV), Горизонтальный баланс(BH), Вертикальный баланс (BV)
+    # usability_metrics = ['DM', 'TeS', 'BL', 'Tread', 'Tpointing', 'Tlocal', 'LA', 'TV', 'BH', 'BV']
+    def get_usability_reward(self, agent):
+        # usability metrics
+        us_reward = [0. for _ in range(10)]
+        for i in range(10):
+            r_i = self.app.sliders_reward[i+7].value
+            if r_i == 0: continue
+            if i==0: # DM=1-1/aframe*sum_n(ai), ai and aframe represent the area of object i and the area of the frame respectively
+                ai = [s.widjet_area() for s in self.app.FlyScatters]
+                us_reward[i] = 1-sum(ai)/self.app.frame_area
+            elif i==3: # BL=1/n*sum_n(Built_in_Icon(i)), Built_in_Icon(i)=1 if widjet (i) has icon
+                us_reward[i] = 1
+        # print(us_reward[0])
+        return us_reward
 
     def take_action(self, action, agent, tensor=False):
         penalty = agent.widget.change_pos_size(action) #.data.item())
         self.steps_left -= 1
         if self.is_done(): self.done = True
-        r_pos, r_taps = self.get_rewards(agent)
-        reward = sum(r_pos) + r_taps + penalty
+        # r_pos, r_taps = self.get_rewards(agent)
+        # reward = sum(r_pos) + r_taps + penalty
+        # self.get_usability_reward(agent)
+        r_pos = self.get_local_reward(agent, action)
+        r_taps = self.get_activation_reward(agent)
+        reward = r_pos + r_taps + penalty
         #reward = sum(r_pos)/len(r_pos) + r_taps + penalty
         terminated = True if self.steps_left==0 else False
         if tensor: return reward, torch.tensor([reward], device=agent.device), terminated

@@ -70,6 +70,7 @@ class MainApp(App):
         self.modeargs = ('train', 'test')
         self.r_modeargs = ('map', 'weights', 'stats')
         self.usability_metrics = ['DM', 'TS', 'BL', 'Tr', 'Tp', 'Tl', 'LA', 'TV', 'BH', 'BV']
+        self.frame_area = (Window.width * Window.height)
 
     def on_resize_my(self, oldsize, newsize):
         self.reward_graph.height = self.graph_layout.height = Window.height * 5 / 7
@@ -401,6 +402,7 @@ class MainApp(App):
             v = self.target_ui_vect[s.id-1]
             s.update_vect_state_from(v)
         print('-- vect state updated from target UI --')
+        self.show_popup('Vect state updated from target UI!', 'New design')
 
     def target_ui_selected_value(self, spinner, text):
         if text == 'ui vect':
@@ -469,10 +471,10 @@ class MainApp(App):
 
     def show_popup(self, text='', title='Popup Window'):
         popup = Popup(title=title, size_hint=(None, None),
-                      size=(Window.width / 2, Window.height / 4))
+                      size=(7*Window.width / 8, Window.height / 4))
         layout = BoxLayout(orientation='vertical', padding=10)
         layout.add_widget(Label(text=text))
-        layout.add_widget(Button(text='OK', on_press=popup.dismiss))
+        layout.add_widget(Button(text='OK', on_press=popup.dismiss,size_hint_y=None,height='30dp'))
         popup.content = layout
         popup.open()
 
@@ -482,7 +484,7 @@ if __name__ == "__main__":
     # Window.on_resize(300, 800)
     Config.set('graphics', 'width', '300')
     Config.set('graphics', 'height', '800')
-    Window.size = (635, 640) #(435, 940)
+    Window.size = (435, 940) #(635, 640)
     app = MainApp()
     app.run()
     # x = torch.randn(5)
