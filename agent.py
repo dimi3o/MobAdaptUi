@@ -70,8 +70,7 @@ class Environment:
                 reward = self.app.sliders_reward[i].value
                 delta = delta_cur_last_reward[i]
                 cur_reward[i] = 0 if reward==0 else reward if delta > 0 else penalty if delta < 0 else 0
-                if id==0 and i==3:# and cur_reward[i]!=0 and cur_reward[i]!=-0.95 and cur_reward[i]!=0.55:
-                    print(f'cuv{i}={temp_cur_reward[i]}  cur{i}={cur_reward[i]}')
+                # if id==15 and i==3: print(f'cuv{i}={temp_cur_reward[i]}  cur{i}={cur_reward[i]}')
             # usability metrics
             for i in range(7,len(self.app.sliders_reward)):
                 if self.app.sliders_reward[i].value==0: continue
@@ -80,6 +79,9 @@ class Environment:
             cur_reward = [0. for _ in cur_reward]
         self.last_reward[id] = temp_cur_reward
         return cur_reward[:4], cur_reward[4]
+
+    def get_rewards2(self, agent, action):
+        pass
 
     def take_action(self, action, agent, tensor=False):
         penalty = agent.widget.change_pos_size(action) #.data.item())

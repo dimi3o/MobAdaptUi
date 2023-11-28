@@ -183,7 +183,8 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
         self.scale = v[2] * 1.6 + 0.4
         self.x = v[0] * Window.width - self.size[0]/self.scale
         self.y = v[1] * Window.height - self.size[1]/self.scale
-        self.rotation = (v[3] * 2 - 1) * 180 + 180
+        self.rotation = (v[3] / 2) * 360 + 180
+        # self.rotation = (v[3] * 2 - 1) * 180 + 180
 
     # norm value: nx = (x – мин(х)) / (макс(х) – мин(х))
     def norm_min_max(self, value, minv, maxv): return (value - minv) / (maxv - minv)
