@@ -241,24 +241,27 @@ class MainApp(App):
                 s.loss_data = [0]
                 s.total_loss = [0]
                 s.m_loss = [0]
-                s.env.steps_left = int(self.episodespinner.text)*len(self.FlyScatters)
-                s.env.done = False
-                s.env.steps_learning = int(s.env.steps_left * self.steps_learning) if learning else 0
+                self.env.steps_left = int(self.episodespinner.text)*len(self.FlyScatters)
+                self.env.done = False
+                self.env.steps_learning = int(s.env.steps_left * self.steps_learning) if learning else 0
                 if test: s.agent.strategy = agent.EpsilonGreedyStrategy(self.eps_end, self.eps_end, self.eps_decay, self.eps_decay_steps)
 
             self.adapt_btn.background_color = (0.127,0.854,0.561,1) if s.emulation else (1, 0, 0, 1)
         if self.AdaptUiOnOff:
             Clock.schedule_interval(self._update_clock, 1 / 8.)
+            self.env.start_emulation()
             self.total_reward = 0
             self.reset_reward_graph()
         else:
             Clock.unschedule(self._update_clock)
+            self.env.stop_emulation()
             print('- adapt ui stopped -')
 
     def stop_emulation_async(self,Text='Stop emulation!', Header='Adapt', par=0):
         if self.AdaptUiOnOff:
             self.AdaptUiOnOff = False
             Clock.unschedule(self._update_clock)
+            self.env.stop_emulation()
             self.adapt_btn.background_color = (1, 0, 0, 1)
             #self.show_popup(Text, Header)
             #print('- end of episode -')
@@ -296,7 +299,7 @@ class MainApp(App):
         steps_left = int(self.episodespinner.text)
         steps_learning = int((int(self.episodespinner.text) - self.batch_size) * self.steps_learning)
         n_agents = rows*cols
-        e = agent.Environment(steps_left*n_agents, steps_learning*n_agents, self)
+        self.env = agent.Environment(steps_left*n_agents, steps_learning*n_agents, self)
         self.strategy = agent.EpsilonGreedyStrategy(self.eps_start, self.eps_end, self.eps_decay, self.eps_decay_steps)
         for i in range(rows):
             hor = BoxLayout(orientation='horizontal', padding=0, spacing=0)
@@ -304,7 +307,7 @@ class MainApp(App):
                 s = FlyScatterV3(do_rotation=True, do_scale=True, auto_bring_to_front=False, do_collide_after_children=False)
                 s.app = self
                 # self.DQN_init(s, e) #### DQN INIT
-                self.DQN_init_numpy(s, e)
+                self.DQN_init_numpy(s, self.env)
                 hor.add_widget(s)
                 s.id = ids = self.IdsPngs[i*cols+j]
                 s.grid_rect = Widgets.get_random_widget('LineRectangle', 0, 0, Window.width // cols, Window.height // (rows + 1), f'S{i*cols+j}')

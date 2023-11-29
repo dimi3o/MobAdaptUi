@@ -1,6 +1,7 @@
 import math
 import random
 import numpy as np
+from kivy.clock import Clock
 from collections import namedtuple, deque
 from itertools import count
 # import torch
@@ -20,6 +21,8 @@ class Environment:
         self.app = app
         self.current_state = None
         self.done = False
+        self.usability_reward_mean = 0
+        self.usability_reward_sum = 0
 
     def reset(self):
         self.current_state = None
@@ -89,7 +92,7 @@ class Environment:
             reward = self.app.sliders_reward[i].value
             penalty_minus = self.app.sliders_reward[6].value
             delta = cur_reward - self.last_reward[id][i]
-            cur_reward = 0 if reward == 0 else (1-cur_reward) if delta > 0 else penalty_minus if delta < 0 else 0
+            cur_reward = 0 if reward == 0 else (1-cur_reward) if delta > 0 else -cur_reward if delta < 0 else 0
             # if id == 15 and i == 3: print(f'cuv{i}={temp_cur_reward}  cur{i}={cur_reward}')
         else:
             cur_reward = 0
@@ -117,7 +120,7 @@ class Environment:
     # Todi AUI: считывание элемента (Tread), наведение курсора (Tpointing), локальный поиск (Tlocal)
     # QUIM: Соответствие макета (LA), Видимость задач (TV), Горизонтальный баланс(BH), Вертикальный баланс (BV)
     # usability_metrics = ['DM', 'TeS', 'BL', 'Tread', 'Tpointing', 'Tlocal', 'LA', 'TV', 'BH', 'BV']
-    def get_usability_reward(self, agent):
+    def usability_reward_update(self, *args):
         # usability metrics
         us_reward = [0. for _ in range(10)]
         for i in range(10):
@@ -126,9 +129,12 @@ class Environment:
             if i==0: # DM=1-1/aframe*sum_n(ai), ai and aframe represent the area of object i and the area of the frame respectively
                 ai = [s.widjet_area() for s in self.app.FlyScatters]
                 us_reward[i] = 1-sum(ai)/self.app.frame_area
-            elif i==3: # BL=1/n*sum_n(Built_in_Icon(i)), Built_in_Icon(i)=1 if widjet (i) has icon
+            elif i==2: # BL=1/n*sum_n(Built_in_Icon(i)), Built_in_Icon(i)=1 if widjet (i) has icon
                 us_reward[i] = 1
-        # print(us_reward[0])
+
+        self.usability_reward_mean = np.mean(us_reward)
+        self.usability_reward_sum = sum(us_reward)
+        # print(self.usability_reward_mean)
         return us_reward
 
     def take_action(self, action, agent, tensor=False):
@@ -137,10 +143,10 @@ class Environment:
         if self.is_done(): self.done = True
         # r_pos, r_taps = self.get_rewards(agent)
         # reward = sum(r_pos) + r_taps + penalty
-        # self.get_usability_reward(agent)
+        r_us = self.usability_reward_mean
         r_pos = self.get_local_reward(agent, action)
         r_taps = self.get_activation_reward(agent)
-        reward = r_pos + r_taps + penalty
+        reward = r_pos + r_taps + r_us + penalty
         #reward = sum(r_pos)/len(r_pos) + r_taps + penalty
         terminated = True if self.steps_left==0 else False
         if tensor: return reward, torch.tensor([reward], device=agent.device), terminated
@@ -162,6 +168,23 @@ class Environment:
     def num_state_available(self, agent):
         return len(agent.widget.vect_state)
 
+    def change_emulation(self):
+        self.emulation = self.set_emulation(True) if not(self.emulation) else self.set_emulation(False)
+
+    def start_emulation(self):
+        self.emulation = self.set_emulation(True)
+
+    def stop_emulation(self):
+        self.emulation = self.set_emulation(False)
+
+    def set_emulation(self, on=False):
+        method = self.usability_reward_update
+        if on:
+            Clock.schedule_interval(method, 1. / 2.)
+            return True
+        else:
+            Clock.unschedule(method)
+            return False
 
 class Agent3:
     loss_data = [0]
