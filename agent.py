@@ -23,6 +23,7 @@ class Environment:
         self.done = False
         self.usability_reward_mean = 0
         self.usability_reward_sum = 0
+        self.usability_reward_median = 0
 
     def reset(self):
         self.current_state = None
@@ -129,12 +130,16 @@ class Environment:
             if i==0: # DM=1-1/aframe*sum_n(ai), ai and aframe represent the area of object i and the area of the frame respectively
                 ai = [s.widjet_area() for s in self.app.FlyScatters]
                 us_reward[i] = 1-sum(ai)/self.app.frame_area
+            elif i==1: # TeS=1/n * sum_n(a_i), a_i=1, если площадь объекта i больше или равна 44pt х 44pt
+                ai = [int(s.height*(s.scale)>80 and s.width*(s.scale)>80) for s in self.app.FlyScatters]
+                us_reward[i] = sum(ai) / float(len(self.app.FlyScatters))
             elif i==2: # BL=1/n*sum_n(Built_in_Icon(i)), Built_in_Icon(i)=1 if widjet (i) has icon
-                us_reward[i] = 1
+                us_reward[i] = float(1)
 
         self.usability_reward_mean = np.mean(us_reward)
+        self.usability_reward_median = np.median(us_reward[:2])
         self.usability_reward_sum = sum(us_reward)
-        # print(self.usability_reward_mean)
+        print(self.usability_reward_mean, self.usability_reward_median, self.usability_reward_sum)
         return us_reward
 
     def take_action(self, action, agent, tensor=False):
@@ -143,7 +148,7 @@ class Environment:
         if self.is_done(): self.done = True
         # r_pos, r_taps = self.get_rewards(agent)
         # reward = sum(r_pos) + r_taps + penalty
-        r_us = self.usability_reward_mean
+        r_us = self.usability_reward_median #self.usability_reward_sum #self.usability_reward_mean
         r_pos = self.get_local_reward(agent, action)
         r_taps = self.get_activation_reward(agent)
         reward = r_pos + r_taps + r_us + penalty
