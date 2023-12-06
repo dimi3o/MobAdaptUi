@@ -71,6 +71,8 @@ class MainApp(App):
         self.r_modeargs = ('map', 'weights', 'stats')
         self.usability_metrics = ['DM', 'TS', 'BL', 'Tr', 'Tp', 'Tl', 'LA', 'TV', 'BH', 'BV']
         self.frame_area = (Window.width * Window.height)
+        self.window_width = Window.width
+        self.window_height = Window.height
 
     def on_resize_my(self, oldsize, newsize):
         self.reward_graph.height = self.graph_layout.height = Window.height * 5 / 7
