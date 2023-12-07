@@ -122,22 +122,34 @@ class Environment:
     # QUIM: Соответствие макета (LA), Видимость задач (TV), Горизонтальный баланс(BH), Вертикальный баланс (BV)
     # usability_metrics = ['DM', 'TeS', 'BL', 'Tread', 'Tpointing', 'Tlocal', 'LA', 'TV', 'BH', 'BV']
     def usability_reward_update(self, *args):
+        a = [0. for _ in range(10)]; al = []; ar = []; at = []; ab = []
+        n = float(len(self.app.FlyScatters))
+        for s in self.app.FlyScatters:
+            a[0] += s.widjet_area()
+            a[1] += int(s.height*(s.scale)>88 and s.width*(s.scale)>88)
+            a[7] += 1 if s.scale>0.9 else 0
+
+            if s.center_x < self.app.window_width // 2: al.append(s.y)
+            if s.center_x > self.app.window_width // 2: ar.append(s.y)
+            if s.center_y < self.app.window_height // 2: ab.append(s.x)
+            if s.center_y > self.app.window_height // 2: at.append(s.x)
+
         # usability metrics
         us_reward = [0. for _ in range(10)]
         for i in range(10):
             r_i = self.app.sliders_reward[i+7].value
             if r_i == 0: continue
             if i==0: # DM=1-1/aframe*sum_n(ai), ai and aframe represent the area of object i and the area of the frame respectively
-                ai = [s.widjet_area() for s in self.app.FlyScatters]
-                us_reward[i] = 1-sum(ai)/self.app.frame_area
+                # ai = [s.widjet_area() for s in self.app.FlyScatters]
+                us_reward[i] = 1-a[0]/self.app.frame_area # sum(ai)/self.app.frame_area
             elif i==1: # TeS=1/n * sum_n(a_i), a_i=1, если площадь объекта i больше или равна 44pt х 44pt
-                ai = [int(s.height*(s.scale)>88 and s.width*(s.scale)>88) for s in self.app.FlyScatters]
-                us_reward[i] = sum(ai) / float(len(self.app.FlyScatters))
+                # ai = [int(s.height*(s.scale)>88 and s.width*(s.scale)>88) for s in self.app.FlyScatters]
+                us_reward[i] = a[1] / n #sum(ai) / float(len(self.app.FlyScatters))
             elif i==2: # BL=1-(|BL_vert|+|BL_hor|)/2, BL_vert=(W_L+W_R)/max(|W_L|, | W_R |), BL_hor=(W_T+W_B)/max(|W_T|,|W_B|)
-                al = [s.y for s in self.app.FlyScatters if s.center_x < self.app.window_width // 2]
-                ar = [s.y for s in self.app.FlyScatters if s.center_x > self.app.window_width // 2]
-                ab = [s.x for s in self.app.FlyScatters if s.center_y < self.app.window_height // 2]
-                at = [s.x for s in self.app.FlyScatters if s.center_y > self.app.window_height // 2]
+                # al = [s.y for s in self.app.FlyScatters if s.center_x < self.app.window_width // 2]
+                # ar = [s.y for s in self.app.FlyScatters if s.center_x > self.app.window_width // 2]
+                # ab = [s.x for s in self.app.FlyScatters if s.center_y < self.app.window_height // 2]
+                # at = [s.x for s in self.app.FlyScatters if s.center_y > self.app.window_height // 2]
                 W_L = np.mean(al); W_R = np.mean(ar); W_T = np.mean(at); W_B = np.mean(ab)
                 BL_hor = (W_L - W_R)/max(abs(W_L), abs(W_R))
                 BL_vert = (W_T - W_B)/max(abs(W_T), abs(W_B))
@@ -145,14 +157,15 @@ class Environment:
                 us_reward[8] = 2 * W_L/(W_L+W_R) # BH=200∙W_1/(W_1+W_2 )
                 us_reward[9] = 2 * W_T/(W_T+W_B) # BL=200∙W_1/(W_1+W_2 )
             elif i==7:  # TV=100∙V_i/S_total,∀i, Vi – видимость функции [0, 1].
-                ai = [1 for s in self.app.FlyScatters if s.scale>0.9]
-                us_reward[i] = sum(ai) / float(len(self.app.FlyScatters))
+                # ai = [1 for s in self.app.FlyScatters if s.scale>0.9]
+                us_reward[i] = a[7] / n # sum(ai) / float(len(self.app.FlyScatters))
                 #elif i==2: # BI=1/n*sum_n(Built_in_Icon(i)), Built_in_Icon(i)=1 if widjet (i) has icon
             #    us_reward[i] = float(1)
 
         self.usability_reward_mean = np.mean(us_reward)
         self.usability_reward_median = np.median(us_reward[:2])
         self.usability_reward_sum = sum(us_reward)
+        print(us_reward)
         # print(self.usability_reward_mean, self.usability_reward_median, self.usability_reward_sum, us_reward[7], us_reward[8], us_reward[9])
         return us_reward
 
