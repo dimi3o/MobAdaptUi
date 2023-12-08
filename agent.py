@@ -122,43 +122,57 @@ class Environment:
     # QUIM: Соответствие макета (LA), Видимость задач (TV), Горизонтальный баланс(BH), Вертикальный баланс (BV)
     # usability_metrics = ['DM', 'TeS', 'BL', 'Tread', 'Tpointing', 'Tlocal', 'LA', 'TV', 'BH', 'BV']
     def usability_reward_update(self, *args):
-        a = [0. for _ in range(10)]; al = []; ar = []; at = []; ab = []
+        a = [0. for _ in range(10)]; al = []; ar = []; at = []; ab = []; l =0
         n = float(len(self.app.FlyScatters))
         for s in self.app.FlyScatters:
-            a[0] += s.widjet_area()
-            a[1] += int(s.height*(s.scale)>88 and s.width*(s.scale)>88)
-            a[7] += 1 if s.scale>0.9 else 0
+            a[0] += s.widjet_area() # DM, i==0
+            a[1] += int(s.height*(s.scale)>88 and s.width*(s.scale)>88) # TeS, i==1
 
-            if s.center_x < self.app.window_width // 2: al.append(s.y)
-            if s.center_x > self.app.window_width // 2: ar.append(s.y)
-            if s.center_y < self.app.window_height // 2: ab.append(s.x)
-            if s.center_y > self.app.window_height // 2: at.append(s.x)
+            if s.center_x < self.app.window_width // 2: al.append(s.y); l = len(al) # BL, i==2
+            if s.center_x > self.app.window_width // 2: ar.append(s.y); l = len(ar) # BL, i==2
+            if s.center_y < self.app.window_height // 2: ab.append(s.x); l = len(ab) # BL, i==2
+            if s.center_y > self.app.window_height // 2: at.append(s.x); l = len(at) # BL, i==2
 
+            cuv = s.vect_state  # LA, i==6, current
+            tuv = self.app.target_ui_vect[cuv[0] - 1]  # LA, i==6,  target
+            a[3] += min(1, min(1, cuv[1] / 10.)) # TR, i==3
+            a[4] += np.sqrt(np.power(self.app.window_width-s.x, 2)+np.power(s.y,2))
+            a[5] += l
+            a[6] += 1-abs(tuv[0] - cuv[2])  # LA, i==6,  nx
+            a[6] += 1-abs(tuv[1] - cuv[3])  # LA, i==6,  ny
+            a[6] += 1-abs(tuv[2] - cuv[4])  # LA, i==6,  ns
+            a[6] += 1-abs(tuv[3] - cuv[5])  # LA, i==6,  nr
+
+            a[7] += 1 if s.scale > 0.9 else 0  # TV, i==7
         # usability metrics
         us_reward = [0. for _ in range(10)]
         for i in range(10):
             r_i = self.app.sliders_reward[i+7].value
             if r_i == 0: continue
             if i==0: # DM=1-1/aframe*sum_n(ai), ai and aframe represent the area of object i and the area of the frame respectively
-                # ai = [s.widjet_area() for s in self.app.FlyScatters]
-                us_reward[i] = 1-a[0]/self.app.frame_area # sum(ai)/self.app.frame_area
+                us_reward[i] = 1-a[i]/self.app.frame_area # sum(ai)/self.app.frame_area
             elif i==1: # TeS=1/n * sum_n(a_i), a_i=1, если площадь объекта i больше или равна 44pt х 44pt
-                # ai = [int(s.height*(s.scale)>88 and s.width*(s.scale)>88) for s in self.app.FlyScatters]
-                us_reward[i] = a[1] / n #sum(ai) / float(len(self.app.FlyScatters))
+                us_reward[i] = a[i] / n
             elif i==2: # BL=1-(|BL_vert|+|BL_hor|)/2, BL_vert=(W_L+W_R)/max(|W_L|, | W_R |), BL_hor=(W_T+W_B)/max(|W_T|,|W_B|)
-                # al = [s.y for s in self.app.FlyScatters if s.center_x < self.app.window_width // 2]
-                # ar = [s.y for s in self.app.FlyScatters if s.center_x > self.app.window_width // 2]
-                # ab = [s.x for s in self.app.FlyScatters if s.center_y < self.app.window_height // 2]
-                # at = [s.x for s in self.app.FlyScatters if s.center_y > self.app.window_height // 2]
-                W_L = np.mean(al); W_R = np.mean(ar); W_T = np.mean(at); W_B = np.mean(ab)
+                W_L = np.median(al)/self.app.window_height
+                W_R = np.median(ar)/self.app.window_height
+                W_T = np.median(at)/self.app.window_width
+                W_B = np.median(ab)/self.app.window_width
                 BL_hor = (W_L - W_R)/max(abs(W_L), abs(W_R))
                 BL_vert = (W_T - W_B)/max(abs(W_T), abs(W_B))
                 us_reward[i] = 1-(abs(BL_vert)+abs(BL_hor))/2
-                us_reward[8] = 2 * W_L/(W_L+W_R) # BH=200∙W_1/(W_1+W_2 )
-                us_reward[9] = 2 * W_T/(W_T+W_B) # BL=200∙W_1/(W_1+W_2 )
+                us_reward[8] = 2 * min(W_L,W_R)/(W_L+W_R) # BH=200∙W_1/(W_1+W_2 )
+                us_reward[9] = 2 * min(W_T,W_B)/(W_T+W_B) # BL=200∙W_1/(W_1+W_2 )
+            elif i==3: # TR(i_l)=δ/(1+B(i_l)), B(i_l) - activation level i element in l position
+                us_reward[i] = a[i] / n
+            elif i==4: # TP(i_l )=10.3+4.8∙log(1+i_l)
+                us_reward[i] = 3.4+4.8*np.log((a[i]/n/self.app.frame_diagonal))
+            elif i==5: # TL(i_l )=T_c+δ∙N_local+T_trail
+                us_reward[i] = 0.01+0.1*a[i]/(n+1)+0.02
+            elif i==6: # LA=100∙C_optimal/C_designed
+                us_reward[i] = (a[i]/4) / n
             elif i==7:  # TV=100∙V_i/S_total,∀i, Vi – видимость функции [0, 1].
-                # ai = [1 for s in self.app.FlyScatters if s.scale>0.9]
-                us_reward[i] = a[7] / n # sum(ai) / float(len(self.app.FlyScatters))
+                us_reward[i] = a[i] / n
                 #elif i==2: # BI=1/n*sum_n(Built_in_Icon(i)), Built_in_Icon(i)=1 if widjet (i) has icon
             #    us_reward[i] = float(1)
 

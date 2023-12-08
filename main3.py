@@ -1,4 +1,5 @@
 import random
+import numpy as np
 # import torch
 import agent
 import dqnvianumpy
@@ -71,6 +72,7 @@ class MainApp(App):
         self.r_modeargs = ('map', 'weights', 'stats')
         self.usability_metrics = ['DM', 'TS', 'BL', 'Tr', 'Tp', 'Tl', 'LA', 'TV', 'BH', 'BV']
         self.frame_area = (Window.width * Window.height)
+        self.frame_diagonal = np.sqrt(np.power(Window.width, 2) + np.power(Window.height, 2))
         self.window_width = Window.width
         self.window_height = Window.height
 
@@ -116,7 +118,7 @@ class MainApp(App):
         self.root5 = BoxLayout(orientation='vertical', padding=10)  # params
         self.text_hidden_layer = TextInput(text='64', password=False)
         self.root5.add_widget(self.ihbl([Label(text='Hidden layer:', color=(0, 0, 0, 1)), self.text_hidden_layer]))
-        self.text_memory_size = TextInput(text='10000', password=False)
+        self.text_memory_size = TextInput(text='2000', password=False)
         self.root5.add_widget(self.ihbl([Label(text='Memory Size:', color=(0, 0, 0, 1)), self.text_memory_size]))
         self.text_batch_size = TextInput(text='128', password=False)
         self.root5.add_widget(self.ihbl([Label(text='Batch Size:', color=(0, 0, 0, 1)), self.text_batch_size]))
@@ -159,7 +161,7 @@ class MainApp(App):
         for i in range(17):
             param = 'nx' if i==0 else 'ny' if i==1 else 'ns' if i==2 else 'nr' if i==3 else 'nt' if i==4 else 'p+'if i==5 else 'p-' if i==6 else self.usability_metrics[i-7]
             sl_label = Label(text=f'{param}', color=(0, 0, 0, 1), size_hint_x=None, width='20dp', halign='center')#, halign='auto') #size_hint_x=None, width='90dp',
-            value = 0.01 if i == 5 else .95 if i == 4 else 0.55 if i < 5 else -.95 if i<7 else .95
+            value = 0.01 if i == 5 else .95 if i == 4 or i == 3 else 0.55 if i < 5 else -.95 if i<7 else .95
             values.append(value)
             slider = Widgets.get_random_widget('Slider', -2., 2., value, 0.01)
             labelcallback = lambda instance, value: self.OnSliderRewardChangeValue(cur_sl_label, value)
