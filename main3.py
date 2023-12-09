@@ -63,7 +63,7 @@ class MainApp(App):
         super(MainApp, self).__init__(**kwargs)
         self.title = 'MARL Mobile User Interface v.'+__version__
         self.text_color = MyColors.get_textcolor(WhiteBackColor)
-        self.modes = ('DQN', 'GAN', 'Fly', 'Size', 'Rotate', 'Fly+Size+Rotate')
+        self.modes = ('DQN', 'MAC', 'Fly', 'Size', 'Rotate', 'Fly+Size+Rotate')
         self.cols_rows = ('1х1', '2х2', '3х3', '4х4', '5х5', '6х6', '8x5')
         self.objects = ('Apps', 'Foods', 'Widgets')
         self.kitchen = ('rus', 'eur', 'asia', 'ui vect')
@@ -228,7 +228,7 @@ class MainApp(App):
 
     def adapt_ui(self, instance, learning=True, test=False):
         m = self.modespinner.text
-        if m == 'GAN':
+        if m == 'MAC':
             self.show_popup('This adapt ui in the pipeline...', self.modespinner.text)
             return
 
@@ -251,6 +251,7 @@ class MainApp(App):
                 if test: s.agent.strategy = agent.EpsilonGreedyStrategy(self.eps_end, self.eps_end, self.eps_decay, self.eps_decay_steps)
 
             self.adapt_btn.background_color = (0.127,0.854,0.561,1) if s.emulation else (1, 0, 0, 1)
+
         if self.AdaptUiOnOff:
             Clock.schedule_interval(self._update_clock, 1 / 8.)
             self.env.start_emulation()
@@ -311,7 +312,8 @@ class MainApp(App):
                 s = FlyScatterV3(do_rotation=True, do_scale=True, auto_bring_to_front=False, do_collide_after_children=False)
                 s.app = self
                 # self.DQN_init(s, e) #### DQN INIT
-                self.DQN_init_numpy(s, self.env)
+                if self.modespinner.text=='DQN': self.DQN_init_numpy(s, self.env)
+                elif self.modespinner.text=='MAC': self.MAC_init_numpy(s, self.env)
                 hor.add_widget(s)
                 s.id = ids = self.IdsPngs[i*cols+j]
                 s.grid_rect = Widgets.get_random_widget('LineRectangle', 0, 0, Window.width // cols, Window.height // (rows + 1), f'S{i*cols+j}')
@@ -335,15 +337,11 @@ class MainApp(App):
         s.env = e
         s.set_vect_state()
         s.agent = agent.Agent(s.app.strategy, agent.ReplayMemoryPyTorch(self.memory_size), e.num_actions_available(), s)
-        # s.agent = agent.Agent2(s.app.strategy, agent.ReplayMemoryPyTorch(self.memory_size), e.num_actions_available(), s) # DQN_init2
         s.policy_net = agent.get_nn_module(e.num_state_available(s.agent) - 2, s.agent.device)
         s.target_net = agent.get_nn_module(e.num_state_available(s.agent) - 2, s.agent.device)
-        # s.policy_net = agent.get_nn_module2(e.num_state_available(s.agent) - 2, s.agent.device) # DQN_init2
-        # s.target_net = agent.get_nn_module2(e.num_state_available(s.agent) - 2, s.agent.device) # DQN_init2
         s.target_net.load_state_dict(s.policy_net.state_dict())
         s.target_net.eval()
         s.optimizer = agent.get_optimizer_AdamW(s.policy_net, self.lr)
-        # s.optimizer = agent.get_optimizer_Adam(s.policy_net, self.lr) # DQN_init2
         #### DQN INIT end
 
     def DQN_init_numpy(self, s, e):
@@ -355,6 +353,11 @@ class MainApp(App):
         s.target_net = dqnvianumpy.model.neural_network(e.num_state_available(s.agent)-1, self.hidden_layer, e.num_actions_available(), self.lr)
         s.target_net.load_state_dict(s.policy_net)
         #### DQN INIT end
+
+    def MAC_init_numpy(self, s, e):
+        #### MAC INIT start
+        pass
+        #### MAC INIT end
 
     def set_hyperparams(self):
         self.hidden_layer = int(self.text_hidden_layer.text)

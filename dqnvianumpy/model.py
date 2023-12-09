@@ -1,7 +1,6 @@
 import pickle
 import numpy as np
 
-
 def linear(x, derivation=False):
     """ activation function linear """
     return 1 if derivation else x
@@ -19,6 +18,10 @@ def softmax(x):
     """Compute softmax values for each sets of scores in x."""
     e_x = np.exp(x - np.max(x))
     return e_x / e_x.sum()
+
+def tanh(x):
+    """Applies the Hyperbolic Tangent (Tanh) function element-wise: Tanh(x)=(exp(x)−exp(−x))/(exp(x)+exp(−x)) """
+    return (np.exp(x)-np.exp(-x))/(np.exp(x)+np.exp(-x))
 
 class neural_network():
     def __init__(self, input_shape, hidden_neurons, output_shape, learning_rate):

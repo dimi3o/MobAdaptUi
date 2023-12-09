@@ -161,11 +161,11 @@ class Environment:
                 BL_hor = (W_L - W_R)/max(abs(W_L), abs(W_R))
                 BL_vert = (W_T - W_B)/max(abs(W_T), abs(W_B))
                 us_reward[i] = 1-(abs(BL_vert)+abs(BL_hor))/2
-                us_reward[8] = 2 * min(W_L,W_R)/(W_L+W_R) # BH=200∙W_1/(W_1+W_2 )
-                us_reward[9] = 2 * min(W_T,W_B)/(W_T+W_B) # BL=200∙W_1/(W_1+W_2 )
+                if self.app.sliders_reward[8 + 7].value!=0: us_reward[8] = 2 * min(W_L,W_R)/(W_L+W_R) # BH=200∙W_1/(W_1+W_2 )
+                if self.app.sliders_reward[9 + 7].value!=0: us_reward[9] = 2 * min(W_T,W_B)/(W_T+W_B) # BL=200∙W_1/(W_1+W_2 )
             elif i==3: # TR(i_l)=δ/(1+B(i_l)), B(i_l) - activation level i element in l position
                 us_reward[i] = a[i] / n
-            elif i==4: # TP(i_l )=10.3+4.8∙log(1+i_l)
+            elif i==4: # TP(i_l )=a+b∙log(1+i_l)
                 us_reward[i] = 3.4+4.8*np.log((a[i]/n/self.app.frame_diagonal))
             elif i==5: # TL(i_l )=T_c+δ∙N_local+T_trail
                 us_reward[i] = 0.01+0.1*a[i]/(n+1)+0.02
