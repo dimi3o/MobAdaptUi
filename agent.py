@@ -104,7 +104,7 @@ class Environment:
     def get_activation_reward(self, agent):
         cuv = agent.widget.vect_state  # 0 - self.id, 1 - self.taps, 2 - self.nx, 3 - self.ny, 4 - self.ns, 5 - self.nr
         id = cuv[0] - 1  # widjet id
-        cur_reward = min(1, min(1, cuv[1] / 10.))
+        cur_reward = cuv[1]
         temp_cur_reward = cur_reward
         i = 4  # activation set
         if self.last_reward.get(id, None) is not None:
@@ -135,7 +135,7 @@ class Environment:
 
             cuv = s.vect_state  # LA, i==6, current
             tuv = self.app.target_ui_vect[cuv[0] - 1]  # LA, i==6,  target
-            a[3] += min(1, min(1, cuv[1] / 10.)) # TR, i==3
+            a[3] += min(1, cuv[1]*10) # TR, i==3
             a[4] += np.sqrt(np.power(self.app.window_width-s.x, 2)+np.power(s.y,2))
             a[5] += l
             a[6] += 1-abs(tuv[0] - cuv[2])  # LA, i==6,  nx
