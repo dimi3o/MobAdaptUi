@@ -24,6 +24,8 @@ class Environment:
         self.usability_reward_mean = 0
         self.usability_reward_sum = 0
         self.usability_reward_median = 0
+        self.last_usability_reward = 0
+        self.usability_reward = 0
 
     def reset(self):
         self.current_state = None
@@ -164,7 +166,7 @@ class Environment:
                 if self.app.sliders_reward[8 + 7].value!=0: us_reward[8] = 2 * min(W_L,W_R)/(W_L+W_R) # BH=200∙W_1/(W_1+W_2 )
                 if self.app.sliders_reward[9 + 7].value!=0: us_reward[9] = 2 * min(W_T,W_B)/(W_T+W_B) # BL=200∙W_1/(W_1+W_2 )
             elif i==3: # TR(i_l)=δ/(1+B(i_l)), B(i_l) - activation level i element in l position
-                us_reward[i] = a[i] / n
+                us_reward[i] = 1/(1+ (a[i]/n))
             elif i==4: # TP(i_l )=a+b∙log(1+i_l)
                 us_reward[i] = 3.4+4.8*np.log((a[i]/n/self.app.frame_diagonal))
             elif i==5: # TL(i_l )=T_c+δ∙N_local+T_trail
@@ -177,9 +179,14 @@ class Environment:
             #    us_reward[i] = float(1)
 
         self.usability_reward_mean = np.mean(us_reward)
-        self.usability_reward_median = np.median(us_reward[:2])
+        self.usability_reward_median = np.median(us_reward)
         self.usability_reward_sum = sum(us_reward)
-        print(us_reward)
+
+        cur_reward = self.usability_reward_sum
+        delta = cur_reward - self.last_usability_reward if self.last_usability_reward!=0 else 0
+        self.usability_reward = 0 if delta == 0 else cur_reward if delta > 0 else -cur_reward if delta < 0 else 0
+        self.last_usability_reward = cur_reward
+        print(self.usability_reward, us_reward)
         # print(self.usability_reward_mean, self.usability_reward_median, self.usability_reward_sum, us_reward[7], us_reward[8], us_reward[9])
         return us_reward
 
@@ -189,7 +196,7 @@ class Environment:
         if self.is_done(): self.done = True
         # r_pos, r_taps = self.get_rewards(agent)
         # reward = sum(r_pos) + r_taps + penalty
-        r_us = self.usability_reward_median #self.usability_reward_sum #self.usability_reward_mean
+        r_us = self.usability_reward #self.usability_reward_sum #self.usability_reward_mean
         r_pos = self.get_local_reward(agent, action)
         r_taps = self.get_activation_reward(agent)
         reward = r_pos + r_taps + r_us + penalty
