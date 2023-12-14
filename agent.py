@@ -4,9 +4,9 @@ import numpy as np
 from kivy.clock import Clock
 from collections import namedtuple, deque
 from itertools import count
-# import torch
-# import torch.nn as nn
-# import torch.optim as optim
+import torch
+import torch.nn as nn
+import torch.optim as optim
 # import torch.nn.functional as F
 # import torchvision.transforms as T
 
@@ -15,12 +15,13 @@ class Environment:
     last_reward = dict()
     action_space = [0, 1, 2, 3, 4, 5, 6, 7] # 0 - left, 1 - right, 2 - up, 3 - down, 4 - more, 5 - less, 6 - rotate left, 7 - rotate right
 
-    def __init__(self, steps_left=200, steps_learning=150, app=None):
+    def __init__(self, steps_left=200, steps_learning=150, noise_rate=None, app=None):
         self.steps_left = steps_left
         self.steps_learning = steps_learning
         self.app = app
         self.current_state = None
         self.done = False
+        self.noise_rate = noise_rate
         self.usability_reward_mean = 0
         self.usability_reward_sum = 0
         self.usability_reward_median = 0
@@ -309,6 +310,161 @@ class Agent3:
         # Собираем данные для графиков
         return reward
 
+class Agent4:
+    loss_data = [0]
+    m_loss = [0]
+    widget=None
+
+    def __init__(self, strategy, memory, widget=None):
+        self.current_step = 0
+        self.strategy = strategy
+        self.memory = memory
+        self.total_reward = 0.0
+        self.widget = widget
+
+    # Выбираем возможное действие с максимальным из стратегии действий
+    # с учетом дополнительного случайного шума
+    def select_actionFox(act_prob, avail_actions_ind, n_actions, noise_rate):
+        p = np.random.random(1).squeeze()
+        # Добавляем случайный шум к действиям для исследования
+        # разных вариантов действий
+        for i in range(n_actions):
+            # Создаем шум заданного уровня
+            noise = noise_rate * (np.random.rand())
+            # Добавляем значение шума к значению вероятности выполнения действия
+            act_prob[i] = act_prob[i] + noise
+
+        # Выбираем действия в зависимости от вероятностей их выполнения
+        for j in range(n_actions):
+            # Выбираем случайный элемент из списка
+            actiontemp = random.choices(['0', '1', '2', '3', '4', '5', '6'],
+                                        weights=[act_prob[0], act_prob[1], act_prob[2], act_prob[3], act_prob[4],
+                                                 act_prob[5], act_prob[6]])
+            # Преобразуем тип данных
+            action = int(actiontemp[0])
+            # Проверяем наличие выбранного действия в списке действий
+            if action in avail_actions_ind:
+                return action
+            else:
+                act_prob[action] = 0
+
+    # Создаем минивыборку определенного объема из буфера воспроизведения
+    def sample_from_expbuf(experience_buffer, batch_size):
+        # Функция возвращает случайную последовательность заданной длины
+        perm_batch = np.random.permutation(len(experience_buffer))[:batch_size]
+        # Минивыборка
+        experience = np.array(experience_buffer)[perm_batch]
+        # Возвращаем значения минивыборки по частям
+        return experience[:, 0], experience[:, 1], experience[:, 2], experience[:, 3], experience[:, 4], experience[:,
+                                                                                                         5]
+
+    def step(self, e):
+        # Получаем состояние среды для независимого агента IQL
+        state = e.get_obs_agent(self) #Храним историю состояний среды один шаг
+
+        # Конвертируем данные в numpy
+        action_probability = self.widget.policy_net.predict(np.array(state))
+
+        avail_actions_ind = self.widget.available_actions()
+        # Выбираем возможное действие агента с учетом
+        # максимального Q-значения и параметра эпсилон
+        action = self.select_action(action_probability, avail_actions_ind)
+
+        # Передаем действия агентов в среду, получаем награду
+        reward, done = e.take_action(action, self)
+
+        # Получаем новое состояние среды
+        next_state = e.get_obs_agent(self)
+
+        # Сохраняем переход в буфере воспроизведения для каждого агента
+        # self.memory.push(Experience(obs_agentT, action, rewardT, obs_agent_nextT))
+        self.memory.append((state, action, reward, next_state))
+
+        if not done and e.app.batch_size < len(self.memory) and e.steps_learning>0:
+            minibatch = random.sample(list(self.memory), e.app.batch_size)
+
+            state = np.array([i[0] for i in minibatch])
+            action = [i[1] for i in minibatch]
+            rewards = [i[2] for i in minibatch]
+            next_state = np.array([i[3] for i in minibatch])
+
+            q_value = self.widget.policy_net.predict(np.array(state))
+            ns_model_pred = self.widget.target_net.predict(np.array(next_state))
+
+            for i in range(0, e.app.batch_size):
+                q_value[i][action[i]] = rewards[i] + e.app.gamma * np.max(ns_model_pred[i])
+
+            loss = self.widget.policy_net.fit(state, q_value)
+            self.loss_data.append(loss)
+            self.m_loss.append(np.mean(self.loss_data[-1000:]))
+
+            # Подсчет количества шагов обучения
+            e.steps_learning -= 1
+
+        # Собираем данные для графиков
+        return reward
+
+#Определяем архитектуру нейронной сети исполнителя
+class MADDPG_Actor(nn.Module):
+    def __init__(self, obs_size, n_actions):
+        super(MADDPG_Actor, self).__init__()
+        #На вход нейронная сеть получает состояние среды для отдельного агента
+        #На выходе нейронная сеть возвращает стратегию действий
+        self.MADDPG_Actor = nn.Sequential(
+            #Первый линейный слой обрабатывает входные данные состояния среды
+            nn.Linear(obs_size, 60),
+            nn.ReLU(),
+            #Второй линейный слой обрабатывает внутренние данные
+            nn.Linear(60, 60),
+            nn.ReLU(),
+            #Третий линейный слой обрабатывает внутренние данные
+            nn.Linear(60, 60),
+            nn.ReLU(),
+            #Четвертый линейный слой обрабатывает данные для стратегии действий
+            nn.Linear(60, n_actions)
+            )
+        #Финальный выход нерйонной сети обрабатывается функцией Tanh()
+        self.tanh_layer = nn.Tanh()
+    #Вначале данные x обрабатываются полносвязной сетью с функцией ReLU
+    #На выходе происходит обработка функцией Tanh()
+    def forward(self, x):
+        #Обработка полносвязными линейными слоями
+        network_out = self.MADDPG_Actor(x)
+        #Обработка функцией Tanh()
+        tanh_layer_out = self.tanh_layer(network_out)
+        #Выход нейронной сети
+        return tanh_layer_out
+
+#Определяем архитектуру нейронной сети критика
+class MADDPG_Critic(nn.Module):
+    def __init__(self, full_obs_size, n_actions_agents):
+        super(MADDPG_Critic, self).__init__()
+        #На вход нейронная сеть получает состояние среды,
+        #включающее все локальные состояния среды от отдельных агентов
+        #и все выполненные действия отдельных агентов
+        #На выходе нейронная сеть возвращает корректирующее значение
+        self.network = nn.Sequential(
+            #Первый линейный слой обрабатывает входные данные
+            nn.Linear(full_obs_size+n_actions_agents, 202),
+            nn.ReLU(),
+            #Второй линейный слой обрабатывает внутренние данные
+            nn.Linear(202, 60),
+            nn.ReLU(),
+            #Третий линейный слой обрабатывает внутренние данные
+            nn.Linear(60, 30),
+            nn.ReLU(),
+            #Четвертый линейный слой обрабатывает выходные данные
+            nn.Linear(30, 1)
+            )
+    #Данные x последовательно обрабатываются полносвязной сетью с функцией ReLU
+    def forward(self, state, action):
+        #Объединяем данные состояний и действий для передачи в сеть
+        x = torch.cat([state, action], dim=2)
+        #Результаты обработки
+        Q_value = self.network(x)
+        #Финальный выход нейронной сети
+        return Q_value
+
 class EpsilonGreedyStrategy():
     def __init__(self, start, end, decay, decay_steps):
         self.start = start
@@ -324,6 +480,16 @@ class EpsilonGreedyStrategy():
     def get_exploration_rate2(self, current_step):
         epsilon = max(self.end, self.start - (self.start - self.end) * current_step / self.decay_steps)
         return epsilon
+
+class NoiseRateStrategy():
+    def __init__(self, noise_rate_min, noise_rate_max, noise_decay_steps):
+        self.noise_rate_min = noise_rate_min
+        self.noise_rate_max = noise_rate_max
+        self.noise_decay_steps = noise_decay_steps
+
+    def get_noise_rate(self, current_step):
+        noise_rate = max(noise_rate_min, noise_rate_max - (noise_rate_max - noise_rate_min) * current_step / noise_decay_steps)
+        return noise_rate
 
 # class Agent:
 #     loss_data = [0]
@@ -616,8 +782,14 @@ class EpsilonGreedyStrategy():
 # def get_optimizer_AdamW(policy_net, lr):
 #     return optim.AdamW(params=policy_net.parameters(), lr=lr, amsgrad=True)
 #
-# def get_optimizer_Adam(policy_net, lr):
-#     return optim.Adam(params=policy_net.parameters(), lr=lr)
+def get_optimizer_Adam(policy_net, lr):
+    return optim.Adam(params=policy_net.parameters(), lr=lr)
+
+def get_MSELoss_func():
+    return nn.MSELoss()
+
+def get_torch_device():
+    return torch.device("cuda" if torch.cuda.is_available() else "cpu")
 #
 # def get_nn_module(input_length, device):
 #     return DQN(input_length).to(device)

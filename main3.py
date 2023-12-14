@@ -45,7 +45,7 @@ class MainApp(App):
     current_ui_vect = [[0. for j in range(4)] for i in range(40)]
     sliders_reward = []
     strategy = None
-    #DQN hyperparameters
+    # DQN hyperparameters
     batch_size = 128
     gamma = 0.99
     eps_start = 0.9
@@ -53,11 +53,19 @@ class MainApp(App):
     eps_decay = 0.001
     eps_decay_steps = 1000
     target_update = 10
-    TAU = 0.005 # TAU is the update rate of the target network
+    TAU = 0.01 # TAU is the update rate of the target network, Параметр мягкой замены
     memory_size = 10000
     lr = 1e-3
     steps_learning = 1
     hidden_layer = 64
+    # МАС hyperparameters
+    alpha_actor = 0.01 # Скорость обучения исполнителя
+    alpha_critic = 0.01 # Скорость обучения критика
+    noise_rate = 0.01 # Уровень случайного шума
+    noise_rate_max = 0.9 # Начальное значение случайного шума
+    noise_rate_min = 0.01 # Финальное значение случайного шума
+    noise_decay_steps = 15000 # Шаг затухания уровня случайного шума
+    buffer_len = 10000 # Объем буфера воспроизведения
 
     def __init__(self, **kwargs):
         super(MainApp, self).__init__(**kwargs)
@@ -299,21 +307,32 @@ class MainApp(App):
         self.m_loss_data = [0. for i in range(40)]
         random.shuffle(self.IdsPngs)
 
-        # DQN Environment
         self.set_hyperparams()
+        n_agents = rows * cols
         steps_left = int(self.episodespinner.text)
         steps_learning = int((int(self.episodespinner.text) - self.batch_size) * self.steps_learning)
-        n_agents = rows*cols
         self.env = agent.Environment(steps_left*n_agents, steps_learning*n_agents, self)
-        self.strategy = agent.EpsilonGreedyStrategy(self.eps_start, self.eps_end, self.eps_decay, self.eps_decay_steps)
+        if self.modespinner.text == 'DQN':
+            self.strategy = agent.EpsilonGreedyStrategy(self.eps_start, self.eps_end, self.eps_decay, self.eps_decay_steps)
+        elif self.modespinner.text == 'MAC':
+            self.strategy = agent.NoiseRateStrategy(self.noise_rate_min, self.noise_rate_max, self.noise_decay_steps)
+            self.device = agent.get_torch_device()
+            self.experience_buffer = deque(maxlen=self.buffer_len)
+            obs_size = 5 #e.num_state_available(s.agent) - 1
+            # Создаем основную нейронную сеть критика
+            self.critic_network = agent.MADDPG_Critic(obs_size * n_agents, n_agents).to(self.device)
+            # Создаем оптимизатор нейронной сети критика
+            self.optimizerCritic = agent.get_optimizer_Adam(self.critic_network, self.alpha_critic)
+            # Создаем функцию потерь критика
+            self.objectiveCritic = agent.get_MSELoss_func()
+
         for i in range(rows):
             hor = BoxLayout(orientation='horizontal', padding=0, spacing=0)
             for j in range(cols):
                 s = FlyScatterV3(do_rotation=True, do_scale=True, auto_bring_to_front=False, do_collide_after_children=False)
                 s.app = self
-                # self.DQN_init(s, e) #### DQN INIT
                 if self.modespinner.text=='DQN': self.DQN_init_numpy(s, self.env)
-                elif self.modespinner.text=='MAC': self.MAC_init_numpy(s, self.env)
+                elif self.modespinner.text=='MAC': self.MAC_init(s, self.env, self.device)
                 hor.add_widget(s)
                 s.id = ids = self.IdsPngs[i*cols+j]
                 s.grid_rect = Widgets.get_random_widget('LineRectangle', 0, 0, Window.width // cols, Window.height // (rows + 1), f'S{i*cols+j}')
@@ -333,7 +352,6 @@ class MainApp(App):
             self.mainscreen_widgets.add_widget(hor)
 
     def DQN_init(self, s, e):
-        #### DQN INIT start
         s.env = e
         s.set_vect_state()
         s.agent = agent.Agent(s.app.strategy, agent.ReplayMemoryPyTorch(self.memory_size), e.num_actions_available(), s)
@@ -342,22 +360,27 @@ class MainApp(App):
         s.target_net.load_state_dict(s.policy_net.state_dict())
         s.target_net.eval()
         s.optimizer = agent.get_optimizer_AdamW(s.policy_net, self.lr)
-        #### DQN INIT end
 
     def DQN_init_numpy(self, s, e):
-        #### DQN INIT start
         s.env = e
         s.set_vect_state()
         s.agent = agent.Agent3(s.app.strategy, deque(maxlen=self.memory_size), e.num_actions_available(), s)
         s.policy_net = dqnvianumpy.model.neural_network(e.num_state_available(s.agent)-1, self.hidden_layer, e.num_actions_available(), self.lr)
         s.target_net = dqnvianumpy.model.neural_network(e.num_state_available(s.agent)-1, self.hidden_layer, e.num_actions_available(), self.lr)
         s.target_net.load_state_dict(s.policy_net)
-        #### DQN INIT end
 
-    def MAC_init_numpy(self, s, e):
-        #### MAC INIT start
-        pass
-        #### MAC INIT end
+    def MAC_init(self, s, e, device):
+        s.env = e
+        s.set_vect_state()
+        s.agent = agent.Agent4(self.strategy, self.experience_buffer, s)
+        # Создаем основную нейронную сеть исполнителя
+        s.actor_network = agent.MADDPG_Actor(e.num_state_available(s.agent)-1, e.num_actions_available()).to(device)
+        # Создаем целевую нейронную сеть исполнителя
+        s.target_net = agent.MADDPG_Actor(e.num_state_available(s.agent)-1, e.num_actions_available()).to(device)
+        # Синхронизуем веса нейронных сетей исполнителей
+        s.target_net.load_state_dict(s.actor_network.state_dict())
+        s.optimizer = agent.get_optimizer_Adam(s.actor_network, self.alpha_actor)
+        s.objective = agent.get_MSELoss_func()
 
     def set_hyperparams(self):
         self.hidden_layer = int(self.text_hidden_layer.text)

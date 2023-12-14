@@ -98,7 +98,9 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
     agent = None
     policy_net = None
     target_net = None
-    optimizer = None
+    actor_network = None
+    optimizer = None # Оптимизатор НС
+    objective = None # Функция потерь
     env = None
     id = 1
     grid_rect = None
