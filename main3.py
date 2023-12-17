@@ -58,7 +58,10 @@ class MainApp(App):
     lr = 1e-3
     steps_learning = 1
     hidden_layer = 64
-    # МАС hyperparameters
+    # MADDPG hyperparameters
+    batch_size_MADDPG = 32
+    start_steps = 1000  # начинаем обучать через 1000 шагов
+    steps_train = 4  # после начала обучения продолжаем обучать каждый 4 шаг
     alpha_actor = 0.01 # Скорость обучения исполнителя
     alpha_critic = 0.01 # Скорость обучения критика
     noise_rate = 0.01 # Уровень случайного шума
@@ -299,6 +302,7 @@ class MainApp(App):
         self.FlyScatters.clear()
         TextSize = self.colrowspinner.text
         Objects = self.objectspinner.text
+        mode = self.modespinner.text
         rows = int(TextSize[0])
         cols = int(TextSize[2])
         self.reward_data = [0. for i in range(40)]
@@ -311,28 +315,30 @@ class MainApp(App):
         n_agents = rows * cols
         steps_left = int(self.episodespinner.text)
         steps_learning = int((int(self.episodespinner.text) - self.batch_size) * self.steps_learning)
-        self.env = agent.Environment(steps_left*n_agents, steps_learning*n_agents, self)
-        if self.modespinner.text == 'DQN':
+        self.env = agent.Environment(steps_left*n_agents, steps_learning*n_agents, mode, self)
+        if mode == 'DQN':
             self.strategy = agent.EpsilonGreedyStrategy(self.eps_start, self.eps_end, self.eps_decay, self.eps_decay_steps)
-        elif self.modespinner.text == 'MAC':
+        elif mode == 'MAC':
             self.strategy = agent.NoiseRateStrategy(self.noise_rate_min, self.noise_rate_max, self.noise_decay_steps)
             self.device = agent.get_torch_device()
-            self.experience_buffer = deque(maxlen=self.buffer_len)
+            self.env.experience_buffer = deque(maxlen=self.buffer_len)
+            self.env.start_steps = self.start_steps
+            self.env.steps_train = self.steps_train
             obs_size = 5 #e.num_state_available(s.agent) - 1
             # Создаем основную нейронную сеть критика
-            self.critic_network = agent.MADDPG_Critic(obs_size * n_agents, n_agents).to(self.device)
+            self.env.critic_network = agent.MADDPG_Critic(obs_size * n_agents, n_agents).to(self.device)
             # Создаем оптимизатор нейронной сети критика
-            self.optimizerCritic = agent.get_optimizer_Adam(self.critic_network, self.alpha_critic)
+            self.env.optimizerCritic = agent.get_optimizer_Adam(self.critic_network, self.alpha_critic)
             # Создаем функцию потерь критика
-            self.objectiveCritic = agent.get_MSELoss_func()
+            self.env.objectiveCritic = agent.get_MSELoss_func()
 
         for i in range(rows):
             hor = BoxLayout(orientation='horizontal', padding=0, spacing=0)
             for j in range(cols):
                 s = FlyScatterV3(do_rotation=True, do_scale=True, auto_bring_to_front=False, do_collide_after_children=False)
                 s.app = self
-                if self.modespinner.text=='DQN': self.DQN_init_numpy(s, self.env)
-                elif self.modespinner.text=='MAC': self.MAC_init(s, self.env, self.device)
+                if mode=='DQN': self.DQN_init_numpy(s, self.env)
+                elif mode=='MAC': self.MAC_init(s, self.env, self.device)
                 hor.add_widget(s)
                 s.id = ids = self.IdsPngs[i*cols+j]
                 s.grid_rect = Widgets.get_random_widget('LineRectangle', 0, 0, Window.width // cols, Window.height // (rows + 1), f'S{i*cols+j}')
@@ -364,7 +370,7 @@ class MainApp(App):
     def DQN_init_numpy(self, s, e):
         s.env = e
         s.set_vect_state()
-        s.agent = agent.Agent3(s.app.strategy, deque(maxlen=self.memory_size), e.num_actions_available(), s)
+        s.agent = agent.Agent3(self.strategy, deque(maxlen=self.memory_size), e.num_actions_available(), s)
         s.policy_net = dqnvianumpy.model.neural_network(e.num_state_available(s.agent)-1, self.hidden_layer, e.num_actions_available(), self.lr)
         s.target_net = dqnvianumpy.model.neural_network(e.num_state_available(s.agent)-1, self.hidden_layer, e.num_actions_available(), self.lr)
         s.target_net.load_state_dict(s.policy_net)
@@ -372,7 +378,7 @@ class MainApp(App):
     def MAC_init(self, s, e, device):
         s.env = e
         s.set_vect_state()
-        s.agent = agent.Agent4(self.strategy, self.experience_buffer, s)
+        s.agent = agent.Agent4(self.strategy, e.num_actions_available(), s, device)
         # Создаем основную нейронную сеть исполнителя
         s.actor_network = agent.MADDPG_Actor(e.num_state_available(s.agent)-1, e.num_actions_available()).to(device)
         # Создаем целевую нейронную сеть исполнителя

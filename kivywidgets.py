@@ -243,7 +243,7 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
     def set_emulation(self, on=False):
         method = self.DQN_adapt if self.mode == 'DQN' else self.simple_adapt
         if on:
-            Clock.schedule_interval(method, 1. / 60.)
+            Clock.schedule_interval(method, 1. / 30.)
             return True
         else:
             Clock.unschedule(method)
