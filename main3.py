@@ -320,15 +320,17 @@ class MainApp(App):
             self.strategy = agent.EpsilonGreedyStrategy(self.eps_start, self.eps_end, self.eps_decay, self.eps_decay_steps)
         elif mode == 'MAC':
             self.strategy = agent.NoiseRateStrategy(self.noise_rate_min, self.noise_rate_max, self.noise_decay_steps)
-            self.device = agent.get_torch_device()
+            self.device = self.env.device = agent.get_torch_device()
             self.env.experience_buffer = deque(maxlen=self.buffer_len)
-            self.env.start_steps = self.start_steps
-            self.env.steps_train = self.steps_train
             obs_size = 5 #e.num_state_available(s.agent) - 1
             # Создаем основную нейронную сеть критика
             self.env.critic_network = agent.MADDPG_Critic(obs_size * n_agents, n_agents).to(self.device)
+            # Создаем целевую нейронную сеть критика
+            self.env.tgtCritic_network = agent.MADDPG_Critic(obs_size * n_agents, n_agents).to(self.device)
+            # Синхронизуем веса нейронных сетей критиков
+            self.env.tgtCritic_network.load_state_dict(self.env.critic_network.state_dict())
             # Создаем оптимизатор нейронной сети критика
-            self.env.optimizerCritic = agent.get_optimizer_Adam(self.critic_network, self.alpha_critic)
+            self.env.optimizerCritic = agent.get_optimizer_Adam(self.env.critic_network, self.alpha_critic)
             # Создаем функцию потерь критика
             self.env.objectiveCritic = agent.get_MSELoss_func()
 
@@ -357,6 +359,19 @@ class MainApp(App):
 
             self.mainscreen_widgets.add_widget(hor)
 
+    def MAC_init(self, s, e, device):
+        s.env = e
+        s.set_vect_state()
+        s.agent = agent.Agent4(self.strategy, e.num_actions_available(), s, device)
+        # Создаем основную нейронную сеть исполнителя
+        s.actor_network = agent.MADDPG_Actor(e.num_state_available(s.agent)-1, e.num_actions_available()).to(device)
+        # Создаем целевую нейронную сеть исполнителя
+        s.target_net = agent.MADDPG_Actor(e.num_state_available(s.agent)-1, e.num_actions_available()).to(device)
+        # Синхронизуем веса нейронных сетей исполнителей
+        s.target_net.load_state_dict(s.actor_network.state_dict())
+        s.optimizer = agent.get_optimizer_Adam(s.actor_network, self.alpha_actor)
+        s.objective = agent.get_MSELoss_func()
+
     def DQN_init(self, s, e):
         s.env = e
         s.set_vect_state()
@@ -375,18 +390,7 @@ class MainApp(App):
         s.target_net = dqnvianumpy.model.neural_network(e.num_state_available(s.agent)-1, self.hidden_layer, e.num_actions_available(), self.lr)
         s.target_net.load_state_dict(s.policy_net)
 
-    def MAC_init(self, s, e, device):
-        s.env = e
-        s.set_vect_state()
-        s.agent = agent.Agent4(self.strategy, e.num_actions_available(), s, device)
-        # Создаем основную нейронную сеть исполнителя
-        s.actor_network = agent.MADDPG_Actor(e.num_state_available(s.agent)-1, e.num_actions_available()).to(device)
-        # Создаем целевую нейронную сеть исполнителя
-        s.target_net = agent.MADDPG_Actor(e.num_state_available(s.agent)-1, e.num_actions_available()).to(device)
-        # Синхронизуем веса нейронных сетей исполнителей
-        s.target_net.load_state_dict(s.actor_network.state_dict())
-        s.optimizer = agent.get_optimizer_Adam(s.actor_network, self.alpha_actor)
-        s.objective = agent.get_MSELoss_func()
+
 
     def set_hyperparams(self):
         self.hidden_layer = int(self.text_hidden_layer.text)
