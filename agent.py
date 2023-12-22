@@ -12,23 +12,25 @@ import torch.optim as optim
 # import torchvision.transforms as T
 
 class Environment:
+    emulation = False
     app = None
+    strategy = None
     device = None
+    last_reward = dict()
+    action_space = [0,1,2,3,4,5,6,7]  # 0 - left, 1 - right, 2 - up, 3 - down, 4 - more, 5 - less, 6 - rotate left, 7 - rotate right
     critic_network = None # MADDPG, основная нейронная сеть критика
     tgtCritic_network = None # MADDPG, целевая нейронная сеть критика
     optimizerCritic = None # MADDPG, оптимизатор нейронной сети критика
     objectiveCritic = None # MADDPG, функция потерь критика
     experience_buffer = None # MADDPG, буфер воспроизведения
-    last_reward = dict()
-    action_space = [0, 1, 2, 3, 4, 5, 6, 7] # 0 - left, 1 - right, 2 - up, 3 - down, 4 - more, 5 - less, 6 - rotate left, 7 - rotate right
-    rewards = dict() # MADDPG, локальные награды от разных агентов
-    actions = dict() # MADDPG, локальные действия от разных агентов
-    observations = dict() # MADDPG, локальные состояния от разных агентов
-    actions_next = dict() # MADDPG, новые действия от разных агентов
-    observations_next = dict() # MADDPG, новые состояния от разных агентов
     Loss_History = [0]
+    Reward_History = [0]
+    winrate_history = [0]
     total_loss = [0]
     m_loss = [0]
+    Loss_History_actor = [0]
+    total_loss_actor = [0]
+    m_loss_actor = [0]
 
     def __init__(self, steps_left=200, steps_learning=150, mode='DQN', app=None):
         self.steps_left = steps_left
@@ -43,6 +45,7 @@ class Environment:
         self.usability_reward_median = 0
         self.last_usability_reward = 0
         self.usability_reward = 0
+        self.episode_reward = 0 # Награда за эпизод
 
     def reset(self):
         self.current_state = None
@@ -201,11 +204,11 @@ class Environment:
         print(self.usability_reward, us_reward)
         return us_reward
 
-    def take_action(self, action, agent, tensor=False):
+    def take_action(self, action, agent, us_r=True,tensor=False):
         penalty = agent.widget.change_pos_size(action) #.data.item())
         self.steps_left -= 1
         if self.is_done(): self.done = True
-        r_us = self.usability_reward
+        r_us = self.usability_reward if us_r else 0
         r_pos = self.get_local_reward(agent, action)
         r_taps = self.get_activation_reward(agent)
         reward = r_pos + r_taps + r_us + penalty
@@ -261,14 +264,35 @@ class Environment:
     def MADDPG_emulation(self, *args):
         self.usability_reward_update()
 
-        ###########_Цикл по агентам для выполнения действий в игре_########
-        for s in self.app.FlyScatters:
+        widjets = self.app.FlyScatters
+        n_agents = len(widjets) #Количество агентов
+        n_actions = len(self.action_space) #Количество действий агента
+
+        # Обнуляем промежуточные переменные
+        actions = []  # MADDPG, локальные действия от разных агентов
+        observations = []
+        batch_size = self.app.batch_size_MADDPG
+        action = 0
+        obs_size = 5
+        # Храним историю действий один шаг для разных агентов
+        actionsFox = np.zeros([n_agents])
+        # Храним историю состояний среды один шаг для разных агентов
+        obs_agent = np.zeros([n_agents], dtype=object)
+        obs_agent_next = np.zeros([n_agents], dtype=object)
+        # Обновляем и выводим динамический уровень случайного шума
+        noise_rate = self.strategy.get_noise_rate(self.global_step)
+
+        ###########_Цикл по агентам-виджетам для выполнения действий_########
+        for w in widjets:
+            agent_id = w.id-1
             # Получаем состояние среды для независимого агента
-            self.obs_agent = self.get_obs_agent(s.agent)
+            cur_obs_agent = self.get_obs_agent(w.agent)
+            obs_size = len(cur_obs_agent) # Получаем информацию о состоянии
+            obs_agent[agent_id] = cur_obs_agent
             # Конвертируем данные в тензор
-            obs_agentT = torch.FloatTensor([self.obs_agent]).to(self.device)
+            obs_agentT = torch.FloatTensor([obs_agent[agent_id]]).to(self.device)
             # Передаем состояние среды в основную нейронную сеть и получаем стратегию действий
-            action_probabilitiesT = s.actor_network(obs_agentT)
+            action_probabilitiesT = w.actor_network(obs_agentT)
             # Конвертируем данные в numpy
             action_probabilitiesT = action_probabilitiesT.to("cpu")
             action_probabilities = action_probabilitiesT.data.numpy()[0]
@@ -276,59 +300,63 @@ class Environment:
             # Находим возможные действия агента в данный момент времени
             # avail_actions = env.get_avail_agent_actions(agent_id)
             # avail_actions_ind = np.nonzero(avail_actions)[0]
-            avail_actions_ind = s.available_actions()
+            avail_actions_ind = w.available_actions()
 
             # Выбираем возможное действие агента с учетом
             # стратегии действий и уровня случайного шума
-            noise_rate = self.app.strategy.get_noise_rate(self.global_step)
-            action = self.select_actionFox(action_probabilities, avail_actions_ind, self.n_actions, noise_rate)
+            action = self.select_actionFox(action_probabilities, avail_actions_ind, n_actions, noise_rate)
 
             # Собираем действия от разных агентов
-            self.action = self.actionsFox = action
-            self.actions[self.agent_id] = action  # if env.actions.get(self.agent_id, None) is not None:
+            actions.append(action)
+            actionsFox[agent_id] = action
             # Собираем локальные состояния среды от разных агентов
-            env.observations[self.agent_id] = self.obs_agent
-            for i in range(obs_size):
-                self.observations.append(obs_agent[agent_id][i])
+            for i in range(obs_size): observations.append(obs_agent[agent_id][i])
         ######_конец цикла по агентам для выполнения действий в игре_######
 
         # Передаем действия агентов в среду, получаем награду
-        reward, terminated = self.take_actions(self.actions, self)
+        reward_list = np.zeros([n_agents])
+        reward = 0; terminated = False
+        for i, action in enumerate(actionsFox):
+            r, d = self.take_action(int(action), widjets[i].agent, False)
+            reward_list[i] = r; terminated |= d
 
-        env.reward += reward
+        # Суммируем награды за этот шаг для вычисления награды за эпизод
+        # self.episode_reward += reward + self.usability_reward
+        reward = np.mean(reward_list) + self.usability_reward
+        self.episode_reward += reward
 
         # Подготовляем данные для сохранения в буфере воспроизведения
+        actions_next = []
+        observations_next = []
         # Если эпизод не завершился, то можно найти новые действия и состояния
         if not terminated:
-            # Получаем новое состояние среды для независимого агента
-            self.obs_agent_next = env.get_obs_agent(self)
-            # Собираем от разных агентов новые состояния
-            env.observations_next[self.agent_id] = self.obs_agent_next
-            # Конвертируем данные в тензор
-            obs_agent_nextT = torch.FloatTensor([self.obs_agent_next]).to(device)
-            # Получаем новые действия агентов для новых состояний из целевой сети исполнителя
-            action_probabilitiesT = self.widjet.target_net(obs_agent_nextT)
-            # Конвертируем данные в numpy
-            action_probabilitiesT = action_probabilitiesT.to("cpu")
-            action_probabilities = action_probabilitiesT.data.numpy()[0]
-            # Находим новые возможные действия агента
-            avail_actions_ind = self.widget.available_actions()
-            # Выбираем новые возможные действия
-            action = select_actionFox(action_probabilities, avail_actions_ind, self.n_actions, noise_rate)
-            # Собираем новые действия от разных агентов
-            env.actions_next[self.agent_id] = action
+            for agent_id in range(n_agents):
+                w = widjets[agent_id]
+                # Получаем новое состояние среды для независимого агента
+                cur_obs_agent = self.get_obs_agent(w.agent)
+                obs_size = len(cur_obs_agent)
+                obs_agent_next[agent_id] = cur_obs_agent
+                # Собираем от разных агентов новые состояния
+                for i in range(obs_size): observations_next.append(obs_agent_next[agent_id][i])
+                # Конвертируем данные в тензор
+                obs_agent_nextT = torch.FloatTensor([obs_agent_next[agent_id]]).to(self.device)
+                # Получаем новые действия агентов для новых состояний из целевой сети исполнителя
+                action_probabilitiesT = w.target_net(obs_agent_nextT)
+                # Конвертируем данные в numpy
+                action_probabilitiesT = action_probabilitiesT.to("cpu")
+                action_probabilities = action_probabilitiesT.data.numpy()[0]
+                # Находим новые возможные действия агента
+                # avail_actions = env.get_avail_agent_actions(agent_id)
+                # avail_actions_ind = np.nonzero(avail_actions)[0]
+                avail_actions_ind = w.available_actions()
+                # Выбираем новые возможные действия
+                action = self.select_actionFox(action_probabilities, avail_actions_ind, n_actions, noise_rate)
+                # Собираем новые действия от разных агентов
+                actions_next.append(action)
         elif terminated:
             # если эпизод на этом шаге завершился, то новых действий не будет
-            env.actions_next[self.agent_id] = env.actions[self.agent_id]
-            env.actions_next[self.agent_id] = env.observations[self.agent_id]
-
-        # MADDPG, работа буфера воспроизведения
-        actions = list(itertools.chain(*self.actions))
-        observations = list(itertools.chain(*self.observations))
-        actions_next = list(itertools.chain(*self.actions_next))
-        observations_next = list(itertools.chain(*self.observations_next))
-        reward = list(itertools.chain(*self.rewards))
-        terminated = self.is_done()
+            actions_next = actions
+            observations_next = observations
 
         # Сохраняем переход в буфере воспроизведения
         self.experience_buffer.append([observations, actions, observations_next, actions_next, reward, terminated])
@@ -338,8 +366,7 @@ class Environment:
         if (self.global_step % self.app.steps_train == 0) and (self.global_step > self.app.start_steps):
             # Получаем минивыборку из буфера воспроизведения
             exp_obs, exp_acts, exp_next_obs, exp_next_acts, exp_rew, exp_termd = self.sample_from_expbuf(self.experience_buffer,
-                                                                                                    self.app.batch_size)
-
+                                                                                                    batch_size)
             # Конвертируем данные в тензор
             exp_obs = [x for x in exp_obs]
             obs_agentsT = torch.FloatTensor([exp_obs]).to(self.device)
@@ -364,10 +391,10 @@ class Environment:
             action_probabilitieQ_next = action_probabilitieQ_nextT.data.numpy()[0]
 
             # Переформатируем y_batch размером batch_size
-            y_batch = np.zeros([self.app.batch_size])
-            action_probabilitieQBT = torch.empty(1, self.app.batch_size, dtype=torch.float)
+            y_batch = np.zeros([batch_size])
+            action_probabilitieQBT = torch.empty(1, batch_size, dtype=torch.float)
 
-            for i in range(self.app.batch_size):
+            for i in range(batch_size):
                 # Вычисляем целевое значение y
                 y_batch[i] = exp_rew[i] + (self.app.gamma * action_probabilitieQ_next[i]) * (1 - exp_termd[i])
                 action_probabilitieQBT[0][i] = action_probabilitieQT[0][i]
@@ -381,10 +408,10 @@ class Environment:
             loss_t_critic = self.objectiveCritic(action_probabilitieQBT, y_batchT)
 
             # Сохраняем данные для графиков
-            Loss_History.append(loss_t_critic)
+            self.Loss_History.append(loss_t_critic)
             loss_n_critic = loss_t_critic.data.numpy()
-            total_loss.append(loss_n_critic)
-            m_loss.append(np.mean(total_loss[-1000:]))
+            self.total_loss.append(loss_n_critic)
+            self.m_loss.append(np.mean(self.total_loss[-1000:]))
 
             # Выполняем обратное распространение ошибки для критика
             loss_t_critic.backward()
@@ -394,52 +421,48 @@ class Environment:
             ###################_Закончили обучать критика_#################
 
             ##############_Обучаем нейронные сети исполнителей_############
-            # Разбираем совместное состояние на локальные состояния
-            obs_local1 = np.zeros([self.app.batch_size, obs_size])
-            # obs_local2 = np.zeros([self.app.batch_size, obs_size])
-            # obs_local3 = np.zeros([self.app.batch_size, obs_size])
-            for i in range(self.app.batch_size):
-                for j in range(obs_size):
-                    obs_local1[i][j] = exp_obs[i][j]
-            # for i in range(self.app.batch_size):
-            #     k = 0
-            #     for j in range(obs_size, obs_size * 2):
-            #         obs_local2[i][k] = exp_obs[i][j]
-            #         k = k + 1
-            # for i in range(self.app.batch_size):
-            #     k = 0
-            #     for j in range(obs_size * 2, obs_size * 3):
-            #         obs_local3[i][k] = exp_obs[i][j]
-            #         k = k + 1
-            # Конвертируем данные в тензор
-            obs_agentT1 = torch.FloatTensor([obs_local1]).to(self.device)
-            # obs_agentT2 = torch.FloatTensor([obs_local2]).to(self.device)
-            # obs_agentT3 = torch.FloatTensor([obs_local3]).to(self.device)
+            act_full = np.zeros([batch_size, n_agents])
+            for agent_id in range(n_agents):
+                w = widjets[agent_id]
+                # Разбираем совместное состояние на локальные состояния
+                obs_local = np.zeros([batch_size, obs_size])
+                for i in range(batch_size):
+                    k = 0
+                    for j in range(agent_id*obs_size,(agent_id+1)*obs_size):
+                        obs_local[i][k] = exp_obs[i][j]
+                        k += 1
 
-            # Обнуляем градиенты
-            self.widget.optimizer.zero_grad()
-            # optimizerActor_list[1].zero_grad()
-            # optimizerActor_list[2].zero_grad()
+                # for i in range(batch_size):
+                #     for j in range(obs_size):
+                #         obs_local1[i][j] = exp_obs[i][j]
+                # for i in range(batch_size):
+                #     k = 0
+                #     for j in range(obs_size, obs_size * 2):
+                #         obs_local2[i][k] = exp_obs[i][j]
+                #         k = k + 1
+                # for i in range(batch_size):
+                #     k = 0
+                #     for j in range(obs_size * 2, obs_size * 3):
+                #         obs_local3[i][k] = exp_obs[i][j]
+                #         k = k + 1
 
-            # Подаем в нейронные сети исполнителей локальные состояния
-            action_probabilitiesT1 = self.widget.actor_network(obs_agentT1)
-            # action_probabilitiesT2 = actor_network_list[1](obs_agentT2)
-            # action_probabilitiesT3 = actor_network_list[2](obs_agentT3)
+                # Конвертируем данные в тензор
+                obs_agentT1 = torch.FloatTensor([obs_local]).to(self.device)
 
-            # Конвертируем данные в numpy
-            action_probabilitiesT1 = action_probabilitiesT1.to("cpu")
-            # action_probabilitiesT2 = action_probabilitiesT2.to("cpu")
-            # action_probabilitiesT3 = action_probabilitiesT3.to("cpu")
-            action_probabilities1 = action_probabilitiesT1.data.numpy()[0]
-            # action_probabilities2 = action_probabilitiesT2.data.numpy()[0]
-            # action_probabilities3 = action_probabilitiesT3.data.numpy()[0]
+                # Обнуляем градиенты
+                w.optimizer.zero_grad()
 
-            # Вычисляем максимальные значения с учетом объема минивыборки
-            act_full = np.zeros([env.app.batch_size, 40])  # n_agents])
-            for i in range(env.app.batch_size):
-                act_full[i][0] = np.argmax(action_probabilities1[i])
-                # act_full[i][1] = np.argmax(action_probabilities2[i])
-                # act_full[i][2] = np.argmax(action_probabilities3[i])
+                # Подаем в нейронные сети исполнителей локальные состояния
+                action_probabilitiesT1 = w.actor_network(obs_agentT1)
+
+                # Конвертируем данные в numpy
+                action_probabilitiesT1 = action_probabilitiesT1.to("cpu")
+                action_probabilities1 = action_probabilitiesT1.data.numpy()[0]
+
+                # Вычисляем максимальные значения с учетом объема минивыборки
+                for i in range(batch_size):
+                    act_full[i][agent_id] = np.argmax(action_probabilities1[i])
+
             act_fullT = torch.FloatTensor([act_full]).to(self.device)
 
             # Конвертируем данные в тензор
@@ -448,7 +471,7 @@ class Environment:
 
             # Задаем значение функции потерь для нейронных сетей исполнителей
             # как отрицательный выход критика
-            actor_lossT = -env.critic_network(obs_agentsT, act_fullT)
+            actor_lossT = -self.critic_network(obs_agentsT, act_fullT)
 
             # Усредняем значение по количеству элементов минивыборки
             actor_lossT = actor_lossT.mean()
@@ -457,16 +480,16 @@ class Environment:
             actor_lossT.backward()
 
             # Выполняем оптимизацию нейронных сетей исполнителей
-            self.widget.optimizer.step()
-            # optimizerActor_list[1].step()
-            # optimizerActor_list[2].step()
+            for agent_id in range(n_agents): widjets[agent_id].optimizer.step()
+                # optimizerActor_list[1].step()
+                # optimizerActor_list[2].step()
 
             # Собираем данные для графиков
             actor_lossT = actor_lossT.to("cpu")
             self.Loss_History_actor.append(actor_lossT)
             actor_lossN = actor_lossT.data.numpy()
             self.total_loss_actor.append(actor_lossN)
-            self.m_loss_actor.append(np.mean(total_loss_actor[-1000:]))
+            self.m_loss_actor.append(np.mean(self.total_loss_actor[-1000:]))
             ##############_Закончили обучать исполнителей_#################
 
             # Рализуем механизм мягкой замены
@@ -474,13 +497,17 @@ class Environment:
             for target_param, param in zip(self.tgtCritic_network.parameters(), self.critic_network.parameters()):
                 target_param.data.copy_((1 - self.app.TAU) * param.data + self.app.TAU * target_param.data)
             # Обновляем целевые сети акторов
-            for target_param, param in zip(self.widjet.target_net.parameters(),
-                                           self.widget.actor_network.parameters()):
-                target_param.data.copy_((1 - self.app.tau) * param.data + self.app.TAU * target_param.data)
+            for agent_id in range(n_agents):
+                for target_param, param in zip(widjets[agent_id].target_net.parameters(),
+                                               widjets[agent_id].actor_network.parameters()):
+                    target_param.data.copy_((1 - self.app.TAU) * param.data + self.app.TAU * target_param.data)
 
             ######################_конец if обучения_######################
 
         self.global_step += 1
+        self.Reward_History.append(self.episode_reward)
+        if self.is_done():
+            self.app.stop_emulation_async('Adapt is stopped. End of episode!', 'Adapt', 0)
 
     def set_emulation(self, on=False):
         method = self.usability_reward_update if self.mode == 'DQN' else self.MADDPG_emulation
@@ -572,17 +599,8 @@ class Agent3:
         return reward
 
 class Agent4:
-    Loss_History_actor = [0]
-    total_loss_actor = [0]
-    m_loss_actor = [0]
     widget=None
     device=None
-
-    # Храним историю действий один шаг для разных агентов
-    actionsFox = 0 #np.zeros([n_agents])
-    # Храним историю состояний среды один шаг для разных агентов
-    obs_agent = [] #np.zeros([n_agents], dtype=object)
-    obs_agent_next = [] #np.zeros([n_agents], dtype=object)
 
     def __init__(self, strategy, n_actions, widget=None, device=None):
         self.current_step = 0
@@ -595,172 +613,7 @@ class Agent4:
         self.agent_id = int(widget.id) - 1
 
     def step(self, env):
-        # Получаем состояние среды для независимого агента
-        self.obs_agent = env.get_obs_agent(self)
-        # Конвертируем данные в тензор
-        obs_agentT = torch.FloatTensor([self.obs_agent]).to(self.device)
-        # Передаем состояние среды в основную нейронную сеть и получаем стратегию действий
-        action_probabilitiesT = self.widget.actor_network(obs_agentT)
-        # Конвертируем данные в numpy
-        action_probabilitiesT = action_probabilitiesT.to("cpu")
-        action_probabilities = action_probabilitiesT.data.numpy()[0]
-
-        # Находим возможные действия агента в данный момент времени
-        # avail_actions = env.get_avail_agent_actions(agent_id)
-        # avail_actions_ind = np.nonzero(avail_actions)[0]
-        avail_actions_ind = self.widget.available_actions()
-
-        # Выбираем возможное действие агента с учетом
-        # стратегии действий и уровня случайного шума
-        noise_rate = self.strategy.get_noise_rate(self.current_step)
-        action = select_actionFox(action_probabilities, avail_actions_ind, self.n_actions, noise_rate)
-
-        # Собираем действия от разных агентов
-        self.action = self.actionsFox = action
-        env.actions[self.agent_id] = action #if env.actions.get(self.agent_id, None) is not None:
-        # Собираем локальные состояния среды от разных агентов
-        env.observations[self.agent_id] = self.obs_agent
-
-        # Передаем действия агентов в среду, получаем награду
-        reward, terminated = env.take_action(action, self)
-
-        env.reward += reward
-
-        # Подготовляем данные для сохранения в буфере воспроизведения
-        # Если эпизод не завершился, то можно найти новые действия и состояния
-        if not terminated:
-            # Получаем новое состояние среды для независимого агента
-            self.obs_agent_next = env.get_obs_agent(self)
-            # Собираем от разных агентов новые состояния
-            env.observations_next[self.agent_id] = self.obs_agent_next
-            # Конвертируем данные в тензор
-            obs_agent_nextT = torch.FloatTensor([self.obs_agent_next]).to(device)
-            # Получаем новые действия агентов для новых состояний из целевой сети исполнителя
-            action_probabilitiesT = self.widjet.target_net(obs_agent_nextT)
-            # Конвертируем данные в numpy
-            action_probabilitiesT = action_probabilitiesT.to("cpu")
-            action_probabilities = action_probabilitiesT.data.numpy()[0]
-            # Находим новые возможные действия агента
-            avail_actions_ind = self.widget.available_actions()
-            # Выбираем новые возможные действия
-            action = select_actionFox(action_probabilities, avail_actions_ind, self.n_actions, noise_rate)
-            # Собираем новые действия от разных агентов
-            env.actions_next[self.agent_id] = action
-        elif terminated:
-            # если эпизод на этом шаге завершился, то новых действий не будет
-            env.actions_next[self.agent_id] = env.actions[self.agent_id]
-            env.actions_next[self.agent_id] = env.observations[self.agent_id]
-
-        # Сохраняем переход в буфере воспроизведения
-        env.experience_buffer.append([observations, actions, observations_next, actions_next, reward, terminated])
-
-        # Если буфер воспроизведения наполнен, начинаем обучать сеть
-        ########################_начало if обучения_#######################
-        if (self.current_step % env.app.steps_train == 0) and (self.current_step > env.app.start_steps) and e.steps_learning>0:
-            # Получаем минивыборку из буфера воспроизведения
-            exp_obs, exp_acts, exp_next_obs, exp_next_acts, exp_rew, exp_termd = self.sample_from_expbuf(
-                env.experience_buffer,
-                env.app.batch_size)
-
-            # Конвертируем данные в тензор
-            exp_obs = [x for x in exp_obs]
-            obs_agentsT = torch.FloatTensor([exp_obs]).to(self.device)
-            exp_acts = [x for x in exp_acts]
-            act_agentsT = torch.FloatTensor([exp_acts]).to(self.device)
-
-            # Конвертируем данные в тензор
-            exp_next_obs = [x for x in exp_next_obs]
-            obs_agents_nextT = torch.FloatTensor([exp_next_obs]).to(self.device)
-            exp_next_acts = [x for x in exp_next_acts]
-            act_agents_nextT = torch.FloatTensor([exp_next_acts]).to(self.device)
-
-            ##############_Обучаем нейронные сети исполнителей_############
-            # Разбираем совместное состояние на локальные состояния
-            obs_local1 = np.zeros([self.app.batch_size, obs_size])
-            # obs_local2 = np.zeros([self.app.batch_size, obs_size])
-            # obs_local3 = np.zeros([self.app.batch_size, obs_size])
-            for i in range(self.app.batch_size):
-                for j in range(obs_size):
-                    obs_local1[i][j] = exp_obs[i][j]
-            # for i in range(self.app.batch_size):
-            #     k = 0
-            #     for j in range(obs_size, obs_size * 2):
-            #         obs_local2[i][k] = exp_obs[i][j]
-            #         k = k + 1
-            # for i in range(self.app.batch_size):
-            #     k = 0
-            #     for j in range(obs_size * 2, obs_size * 3):
-            #         obs_local3[i][k] = exp_obs[i][j]
-            #         k = k + 1
-            # Конвертируем данные в тензор
-            obs_agentT1 = torch.FloatTensor([obs_local1]).to(self.device)
-            # obs_agentT2 = torch.FloatTensor([obs_local2]).to(self.device)
-            # obs_agentT3 = torch.FloatTensor([obs_local3]).to(self.device)
-
-            # Обнуляем градиенты
-            self.widget.optimizer.zero_grad()
-            # optimizerActor_list[1].zero_grad()
-            # optimizerActor_list[2].zero_grad()
-
-            # Подаем в нейронные сети исполнителей локальные состояния
-            action_probabilitiesT1 = self.widget.actor_network(obs_agentT1)
-            # action_probabilitiesT2 = actor_network_list[1](obs_agentT2)
-            # action_probabilitiesT3 = actor_network_list[2](obs_agentT3)
-
-            # Конвертируем данные в numpy
-            action_probabilitiesT1 = action_probabilitiesT1.to("cpu")
-            # action_probabilitiesT2 = action_probabilitiesT2.to("cpu")
-            # action_probabilitiesT3 = action_probabilitiesT3.to("cpu")
-            action_probabilities1 = action_probabilitiesT1.data.numpy()[0]
-            # action_probabilities2 = action_probabilitiesT2.data.numpy()[0]
-            # action_probabilities3 = action_probabilitiesT3.data.numpy()[0]
-
-            # Вычисляем максимальные значения с учетом объема минивыборки
-            act_full = np.zeros([env.app.batch_size, 40]) #n_agents])
-            for i in range(env.app.batch_size):
-                act_full[i][0] = np.argmax(action_probabilities1[i])
-                # act_full[i][1] = np.argmax(action_probabilities2[i])
-                # act_full[i][2] = np.argmax(action_probabilities3[i])
-            act_fullT = torch.FloatTensor([act_full]).to(self.device)
-
-            # Конвертируем данные в тензор
-            exp_obs = [x for x in exp_obs]
-            obs_agentsT = torch.FloatTensor([exp_obs]).to(self.device)
-
-            # Задаем значение функции потерь для нейронных сетей исполнителей
-            # как отрицательный выход критика
-            actor_lossT = -env.critic_network(obs_agentsT, act_fullT)
-
-            # Усредняем значение по количеству элементов минивыборки
-            actor_lossT = actor_lossT.mean()
-
-            # Выполняем обратное распространение ошибки
-            actor_lossT.backward()
-
-            # Выполняем оптимизацию нейронных сетей исполнителей
-            self.widget.optimizer.step()
-            # optimizerActor_list[1].step()
-            # optimizerActor_list[2].step()
-
-            # Собираем данные для графиков
-            actor_lossT = actor_lossT.to("cpu")
-            self.Loss_History_actor.append(actor_lossT)
-            actor_lossN = actor_lossT.data.numpy()
-            self.total_loss_actor.append(actor_lossN)
-            self.m_loss_actor.append(np.mean(total_loss_actor[-1000:]))
-            ##############_Закончили обучать исполнителей_#################
-
-            # Рализуем механизм мягкой замены
-            # Обновляем целевые сети акторов
-            for target_param, param in zip(self.widjet.target_net.parameters(), self.widget.actor_network.parameters()):
-                target_param.data.copy_((1 - self.app.tau) * param.data + self.app.TAU * target_param.data)
-
-            # Подсчет количества шагов обучения
-            e.steps_learning -= 1
-
-        self.current_step += 1
-
-        # Собираем данные для графиков
+        reward = 0
         return reward
 
 #Определяем архитектуру нейронной сети исполнителя
@@ -847,7 +700,7 @@ class NoiseRateStrategy():
         self.noise_decay_steps = noise_decay_steps
 
     def get_noise_rate(self, current_step):
-        noise_rate = max(noise_rate_min, noise_rate_max - (noise_rate_max - noise_rate_min) * current_step / noise_decay_steps)
+        noise_rate = max(self.noise_rate_min, self.noise_rate_max - (self.noise_rate_max - self.noise_rate_min) * current_step / self.noise_decay_steps)
         return noise_rate
 
 # class Agent:

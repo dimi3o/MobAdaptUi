@@ -60,7 +60,7 @@ class MainApp(App):
     hidden_layer = 64
     # MADDPG hyperparameters
     batch_size_MADDPG = 32
-    start_steps = 1000  # начинаем обучать через 1000 шагов
+    start_steps = 100  # начинаем обучать через 1000 шагов
     steps_train = 4  # после начала обучения продолжаем обучать каждый 4 шаг
     alpha_actor = 0.01 # Скорость обучения исполнителя
     alpha_critic = 0.01 # Скорость обучения критика
@@ -113,7 +113,7 @@ class MainApp(App):
 
         #FOOT PANEL
         self.episodespinner = Spinner(text=self.episodes[1], values=self.episodes, size_hint_x=None, width='50dp', background_color=(0.225, 0.155, 0.564, 1))
-        self.modespinner = Spinner(text="DQN", values=self.modes, background_color=(0.127,0.854,0.561,1))
+        self.modespinner = Spinner(text="MAC", values=self.modes, background_color=(0.127,0.854,0.561,1))
         self.adapt_btn = Button(text='ADAPT UI', size_hint_y=None, height='30dp', background_color=(1, 0, 0, 1), on_press=self.adapt_ui) #on_press=lambda null: self.show_popup('MARLMUI starting... '+self.modespinner.text, 'Info'))
         test_btn = Button(text='TEST UI', size_hint_y=None, height='30dp', size_hint_x=None, width='100dp', background_color=(0, 0, 1, 1), on_press=lambda null: self.adapt_ui(self, False, True))
         quit_btn = Button(text='QUIT', size_hint_y=None, height='30dp', background_color=(0.9, 0.9, 0.9, 1), on_press=lambda null: self.get_running_app().stop())
@@ -239,29 +239,38 @@ class MainApp(App):
 
     def adapt_ui(self, instance, learning=True, test=False):
         m = self.modespinner.text
-        if m == 'MAC':
-            self.show_popup('This adapt ui in the pipeline...', self.modespinner.text)
-            return
-
+        #self.show_popup('This adapt ui in the pipeline...', self.modespinner.text)
         self.AdaptUiOnOff = not self.AdaptUiOnOff
-        if m == 'DQN' and self.AdaptUiOnOff == True:
+        self.adapt_btn.background_color = (0.127, 0.854, 0.561, 1) if self.AdaptUiOnOff else (1, 0, 0, 1)
+
+        if self.AdaptUiOnOff:
             self.total_reward = 0
             self.rewards_count = 0
-        for s in self.FlyScatters:
-            s.mode = self.modespinner.text
-            s.change_emulation()
-            if m == 'DQN' and s.emulation:
-                s.agent.total_reward = 0
-                s.agent.current_step = 0
-                s.loss_data = [0]
-                s.total_loss = [0]
-                s.m_loss = [0]
-                self.env.steps_left = int(self.episodespinner.text)*len(self.FlyScatters)
-                self.env.done = False
-                self.env.steps_learning = int(s.env.steps_left * self.steps_learning) if learning else 0
-                if test: s.agent.strategy = agent.EpsilonGreedyStrategy(self.eps_end, self.eps_end, self.eps_decay, self.eps_decay_steps)
+            self.env.steps_left = int(self.episodespinner.text) * len(self.FlyScatters)
+            self.env.done = False
+            self.env.steps_learning = int(self.env.steps_left * self.steps_learning) if learning else 0
+            self.env.Loss_History = [0]
+            self.env.Reward_History = [0]
+            self.env.winrate_history = [0]
+            self.env.total_loss = [0]
+            self.env.m_loss = [0]
+            self.env.Loss_History_actor = [0]
+            self.env.total_loss_actor = [0]
+            self.env.m_loss_actor = [0]
 
-            self.adapt_btn.background_color = (0.127,0.854,0.561,1) if s.emulation else (1, 0, 0, 1)
+        if m == 'DQN':
+            for s in self.FlyScatters:
+                s.mode = m
+                s.change_emulation()
+                if s.emulation:
+                    s.agent.total_reward = 0
+                    s.agent.current_step = 0
+                    s.loss_data = [0]
+                    s.total_loss = [0]
+                    s.m_loss = [0]
+                    if test: s.agent.strategy = agent.EpsilonGreedyStrategy(self.eps_end, self.eps_end, self.eps_decay, self.eps_decay_steps)
+        elif m == 'MAC':
+            self.env.change_emulation()
 
         if self.AdaptUiOnOff:
             Clock.schedule_interval(self._update_clock, 1 / 8.)
@@ -283,10 +292,15 @@ class MainApp(App):
             #print('- end of episode -')
 
     def _update_clock(self, dt):
-        widget_id = int(self.graph_widget_id.text)-1
-        #reward = self.reward_data[widget_id]
-        reward = self.m_loss_data[widget_id]
-        loss = self.loss_data[widget_id]
+        m = self.modespinner.text
+        if m=='DQN':
+            widget_id = int(self.graph_widget_id.text)-1
+            #reward = self.reward_data[widget_id]
+            reward = self.m_loss_data[widget_id]
+            loss = self.loss_data[widget_id]
+        elif m=='MAC':
+            reward = self.env.Reward_History[-1] # self.env.m_loss_actor[-1]
+            loss = self.env.Loss_History_actor[-1]#Loss_History[-1]
         #reward = self.total_reward
         #reward = self.total_reward / self.rewards_count
         self.reward_points.append((self.reward_graph.xmax, reward))
@@ -317,9 +331,9 @@ class MainApp(App):
         steps_learning = int((int(self.episodespinner.text) - self.batch_size) * self.steps_learning)
         self.env = agent.Environment(steps_left*n_agents, steps_learning*n_agents, mode, self)
         if mode == 'DQN':
-            self.strategy = agent.EpsilonGreedyStrategy(self.eps_start, self.eps_end, self.eps_decay, self.eps_decay_steps)
+            self.env.strategy = agent.EpsilonGreedyStrategy(self.eps_start, self.eps_end, self.eps_decay, self.eps_decay_steps)
         elif mode == 'MAC':
-            self.strategy = agent.NoiseRateStrategy(self.noise_rate_min, self.noise_rate_max, self.noise_decay_steps)
+            self.env.strategy = agent.NoiseRateStrategy(self.noise_rate_min, self.noise_rate_max, self.noise_decay_steps)
             self.device = self.env.device = agent.get_torch_device()
             self.env.experience_buffer = deque(maxlen=self.buffer_len)
             obs_size = 5 #e.num_state_available(s.agent) - 1
@@ -372,6 +386,14 @@ class MainApp(App):
         s.optimizer = agent.get_optimizer_Adam(s.actor_network, self.alpha_actor)
         s.objective = agent.get_MSELoss_func()
 
+    def DQN_init_numpy(self, s, e):
+        s.env = e
+        s.set_vect_state()
+        s.agent = agent.Agent3(e.strategy, deque(maxlen=self.memory_size), e.num_actions_available(), s)
+        s.policy_net = dqnvianumpy.model.neural_network(e.num_state_available(s.agent)-1, self.hidden_layer, e.num_actions_available(), self.lr)
+        s.target_net = dqnvianumpy.model.neural_network(e.num_state_available(s.agent)-1, self.hidden_layer, e.num_actions_available(), self.lr)
+        s.target_net.load_state_dict(s.policy_net)
+
     def DQN_init(self, s, e):
         s.env = e
         s.set_vect_state()
@@ -381,16 +403,6 @@ class MainApp(App):
         s.target_net.load_state_dict(s.policy_net.state_dict())
         s.target_net.eval()
         s.optimizer = agent.get_optimizer_AdamW(s.policy_net, self.lr)
-
-    def DQN_init_numpy(self, s, e):
-        s.env = e
-        s.set_vect_state()
-        s.agent = agent.Agent3(self.strategy, deque(maxlen=self.memory_size), e.num_actions_available(), s)
-        s.policy_net = dqnvianumpy.model.neural_network(e.num_state_available(s.agent)-1, self.hidden_layer, e.num_actions_available(), self.lr)
-        s.target_net = dqnvianumpy.model.neural_network(e.num_state_available(s.agent)-1, self.hidden_layer, e.num_actions_available(), self.lr)
-        s.target_net.load_state_dict(s.policy_net)
-
-
 
     def set_hyperparams(self):
         self.hidden_layer = int(self.text_hidden_layer.text)
