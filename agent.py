@@ -492,6 +492,14 @@ class Environment:
             Clock.unschedule(method)
             return False
 
+    def change_emulation(self):
+        self.emulation = self.set_emulation(True) if not(self.emulation) else self.set_emulation(False)
+
+    def start_emulation(self):
+        self.emulation = self.set_emulation(True)
+
+    def stop_emulation(self):
+        self.emulation = self.set_emulation(False)
 
 class Agent3:
     loss_data = [0]
