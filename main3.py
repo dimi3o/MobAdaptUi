@@ -44,6 +44,8 @@ class MainApp(App):
     cumulative_reward_data = []
     loss_data = []
     m_loss_data = []
+    graph1_points = []
+    graph2_points = []
     target_ui_vect = [[0. for j in range(4)] for i in range(40)]
     current_ui_vect = [[0. for j in range(4)] for i in range(40)]
     sliders_reward = []
@@ -91,7 +93,8 @@ class MainApp(App):
         self.window_height = Window.height
 
     def on_resize_my(self, oldsize, newsize):
-        self.reward_graph.height = self.graph_layout.height = Window.height * 5 / 7
+        pass
+        # self.reward_graph.height = self.graph_layout.height = Window.height * 5 / 7
 
     def build(self):
         Window.bind(size=self.on_resize_my)
@@ -115,8 +118,9 @@ class MainApp(App):
             self.rect_headpanel = Rectangle()
 
         #FOOT PANEL
-        self.episodespinner = Spinner(text=self.episodes[1], values=self.episodes, size_hint_x=None, width='50dp', background_color=(0.225, 0.155, 0.564, 1))
+        self.episodespinner = Spinner(text=self.episodes[0], values=self.episodes, size_hint_x=None, width='50dp', background_color=(0.225, 0.155, 0.564, 1))
         self.modespinner = Spinner(text="MAC", values=self.modes, background_color=(0.127,0.854,0.561,1))
+        self.modespinner.bind(text=self.colrowspinner_selected_value)
         self.adapt_btn = Button(text='ADAPT UI', size_hint_y=None, height='30dp', background_color=(1, 0, 0, 1), on_press=self.adapt_ui) #on_press=lambda null: self.show_popup('MARLMUI starting... '+self.modespinner.text, 'Info'))
         test_btn = Button(text='TEST UI', size_hint_y=None, height='30dp', size_hint_x=None, width='100dp', background_color=(0, 0, 1, 1), on_press=lambda null: self.adapt_ui(self, False, True))
         quit_btn = Button(text='QUIT', size_hint_y=None, height='30dp', background_color=(0.9, 0.9, 0.9, 1), on_press=lambda null: self.get_running_app().stop())
@@ -195,12 +199,16 @@ class MainApp(App):
         self.root3.add_widget(self.ihbl([Label(text='Kitchen:', color=(0, 0, 1, 1)),self.kitchenspinner]))
 
         # SETTINGS SCREEN, graph tab
+        self.graph_values_mode = Spinner(text='MEAN LOSS', values=['MEAN LOSS', 'LOSS', 'TOTAL REWARD', 'REWARD'], background_color=(0.127, 0.234, 0.761, 1))
+        self.root2.add_widget(self.ihbl([Label(text='Graph values:', color=(0, 0, 0, 1)), self.graph_values_mode]))
         self.graph_widget_id = Spinner(text='1', values=[str(j) for j in range(1, 41)], background_color=(0.327, 0.634, 0.161, 1))
-        self.root2.add_widget(self.ihbl([Label(text='REWARD/LOSS widget id:', color=(0, 0, 0, 1)), self.graph_widget_id]))
+        self.root2.add_widget(self.ihbl([Label(text='Widget ID:', color=(0, 0, 0, 1)), self.graph_widget_id]))
         self.reward_graph = Widgets.get_graph_widget(.5, .5, 0, .1, 0, .1, 'Time, [sec]', WhiteBackColor)
-        self.graph_layout = BoxLayout(orientation='horizontal')  # self.reward_graph.height = self.graph_layout.height = Window.height*1./2.
-        self.graph_layout.add_widget(self.reward_graph)
+        # self.graph_layout = BoxLayout(orientation='horizontal')  # self.reward_graph.height = self.graph_layout.height = Window.height*1./2.
+        # self.graph_layout.add_widget(self.reward_graph)
         # self.root2.add_widget(self.graph_layout)
+        self.root2.add_widget(self.ihbl([Button(text='Save graph', size_hint_y=None, height='30dp', on_press=lambda null: self.save_plot()),
+                                         Button(text='Reset points', size_hint_y=None, height='30dp', color=(1, 0, 0, 1), on_press=lambda null: self.reset_graph_points(True))]))
         self.graph_layout2 = BoxLayout(orientation='vertical')
         self.root2.add_widget(self.graph_layout2)
 
@@ -280,7 +288,7 @@ class MainApp(App):
             Clock.schedule_interval(self._update_clock, 1 / 8.)
             self.env.start_emulation()
             self.total_reward = 0
-            self.reset_reward_graph()
+            self.reset_graph_points()
         else:
             Clock.unschedule(self._update_clock)
             self.env.stop_emulation()
@@ -297,44 +305,62 @@ class MainApp(App):
             #print('- end of episode -')
 
     def matplot_output(self):
-        # x_data = np.arange(0, len(self.loss_data))
-        # plt.plot(x_data, self.loss_data, '-', label="Loss")
-        # x1, y1 = zip(*self.reward_points)
-        plt.figure(figsize=(10, 10))
-        plt.plot(*zip(*self.reward_points), '-', label="Mean Loss")
-        plt.plot(*zip(*self.loss_points), '-', label="Loss")
+        text_values = self.graph_values_mode.text
+        plt.figure(figsize=(10, 10)) # x1, y1 = zip(*self.graph1_points)
+        if len(self.graph1_points)>0:
+            plt.plot(self.graph1_points, '-', label="IQL", color='r') # *zip(*self.graph1_points)
+            x, y, ci = self.get_plot_params(self.graph1_points)
+            plt.fill_between(x, (y - ci), (y + ci), color='r', alpha=.1)
+        if len(self.graph2_points) > 0:
+            plt.plot(self.graph2_points, '-', label="MAC", color='b')
+            x, y, ci = self.get_plot_params(self.graph2_points)
+            plt.fill_between(x, (y - ci), (y + ci), color='b', alpha=.1)
         plt.xlabel("Steps")
-        plt.ylabel("Value")
+        plt.ylabel(self.graph_values_mode.text)
         plt.legend(loc="best")
         graph_widget = FigureCanvasKivyAgg(plt.gcf())
+        self.graph_layout2.clear_widgets()
         self.graph_layout2.add_widget(graph_widget)
-        self.save_plot(plt)
 
-    def save_plot(self, plt_sample):
+    def get_plot_params(self, graph_points):
+        y = np.asarray(graph_points)
+        x = [i for i, v in enumerate(graph_points)]  # x_data = np.arange(0, len(self.loss_data))
+        ci = 1.96 * np.std(graph_points) / np.sqrt(len(x))
+        return x, y, ci
+
+    def save_plot(self):
         script_dir = os.path.dirname(__file__)
         graphs_dir = os.path.join(script_dir, 'Graphs/')
         if not os.path.isdir(graphs_dir): os.makedirs(graphs_dir)
-        plt_sample.savefig(graphs_dir + 'graph2.png', format='png', dpi = 300, pad_inches=0.05)
+        plt.savefig(graphs_dir + 'graph2.png', format='png', dpi = 300, pad_inches=0.05)
 
     def _update_clock(self, dt):
         m = self.modespinner.text
+        vm = self.graph_values_mode.text
         if m=='DQN':
+            graph1 = 0
             widget_id = int(self.graph_widget_id.text)-1
-            #reward = self.reward_data[widget_id]
-            reward = self.m_loss_data[widget_id]
-            loss = self.loss_data[widget_id]
+            if vm == 'MEAN LOSS': graph1 = self.m_loss_data[widget_id]
+            elif vm=='TOTAL REWARD': graph1 = self.cumulative_reward_data[widget_id]
+            elif vm == 'REWARD': graph1 = self.reward_data[widget_id]
+            else: graph1 = self.loss_data[widget_id]
+            if graph1 != 0: self.graph1_points.append(graph1)
         elif m=='MAC':
-            reward = self.env.m_loss_actor[-1] #self.env.Reward_History[-1]
-            loss = self.env.total_loss_actor[-1]#Loss_History[-1]
+            graph2 = 0
+            if vm == 'MEAN LOSS': graph2 = self.env.m_loss_actor[-1]
+            elif vm=='TOTAL REWARD': graph2 = self.env.Reward_History[-1]
+            elif vm == 'REWARD': graph2 = self.env.reward_data[-1]
+            else: graph2 = self.env.total_loss_actor[-1]
+            if graph2!=0: self.graph2_points.append(graph2)
         #reward = self.total_reward
         #reward = self.total_reward / self.rewards_count
-        self.reward_points.append((self.reward_graph.xmax, reward))
-        self.loss_points.append((self.reward_graph.xmax, loss))
-        self.reward_plot.points = self.reward_points
-        self.loss_plot.points = self.loss_points
-        self.reward_graph.xmax += 1 / 8.
-        self.expand_graph_axes(self.reward_graph, new_ymax=reward)
-        self.expand_graph_axes(self.reward_graph, new_ymax=loss)
+        # self.graph1_points.append((self.reward_graph.xmax, reward))
+        # self.graph2_points.append((self.reward_graph.xmax, loss))
+        # self.reward_plot.points = self.graph1_points
+        # self.loss_plot.points = self.graph2_points
+        # self.reward_graph.xmax += 1 / 8.
+        # self.expand_graph_axes(self.reward_graph, new_ymax=reward)
+        # self.expand_graph_axes(self.reward_graph, new_ymax=loss)
 
     def mainscreen_rebuild_btn_click(self, instance):
         self.mainscreen_widgets.clear_widgets()
@@ -454,19 +480,20 @@ class MainApp(App):
         if abs(new_ymax) > graph.y_ticks_major * 20: graph.y_ticks_major *= 4
         if graph.xmax > graph.x_ticks_major * 20: graph.x_ticks_major *= 2
 
-    def reset_reward_graph(self):
-        try:
-            self.reward_graph.remove_plot(self.reward_plot)
-            self.reward_graph.remove_plot(self.loss_plot)
-        except: pass
-        self.reward_plot = LinePlot(line_width=2, color=[1, 0, 0, 1])
-        self.loss_plot = LinePlot(line_width=2, color=[0, 0, 1, 1])
-        self.reward_graph.add_plot(self.reward_plot)
-        self.reward_graph.add_plot(self.loss_plot)
-        self.reward_points = []
-        self.loss_points = []
-        self.reward_graph.x_ticks_major = .5; self.reward_graph.y_ticks_major = .1
-        self.reward_graph.xmin = 0; self.reward_graph.xmax = .1; self.reward_graph.ymin = 0; self.reward_graph.ymax = .1
+    def reset_graph_points(self, allpoint=False):
+        m = self.modespinner.text
+        if m=='DQN': self.graph1_points = []
+        elif m=='MAC': self.graph2_points = []
+        # try:
+        #     self.reward_graph.remove_plot(self.reward_plot)
+        #     self.reward_graph.remove_plot(self.loss_plot)
+        # except: pass
+        # self.reward_plot = LinePlot(line_width=2, color=[1, 0, 0, 1])
+        # self.loss_plot = LinePlot(line_width=2, color=[0, 0, 1, 1])
+        # self.reward_graph.add_plot(self.reward_plot)
+        # self.reward_graph.add_plot(self.loss_plot)
+        # self.reward_graph.x_ticks_major = .5; self.reward_graph.y_ticks_major = .1
+        # self.reward_graph.xmin = 0; self.reward_graph.xmax = .1; self.reward_graph.ymin = 0; self.reward_graph.ymax = .1
 
     def do_current_ui_vect(self, vect):
         self.current_ui_vect[vect[0]-1] = [vect[2], vect[3], vect[4], vect[5]]

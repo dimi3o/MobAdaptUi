@@ -26,6 +26,7 @@ class Environment:
     Loss_History = [0]
     Reward_History = [0]
     winrate_history = [0]
+    reward_data = [0]
     total_loss = [0]
     m_loss = [0]
     Loss_History_actor = [0]
@@ -323,6 +324,7 @@ class Environment:
         # Суммируем награды за этот шаг для вычисления награды за эпизод
         # self.episode_reward += reward + self.usability_reward
         reward = np.mean(reward_list) + self.usability_reward
+        self.reward_data.append(reward)
         self.episode_reward += reward
 
         # Подготовляем данные для сохранения в буфере воспроизведения
@@ -639,6 +641,8 @@ class MADDPG_Actor(nn.Module):
             )
         #Финальный выход нерйонной сети обрабатывается функцией Tanh()
         self.tanh_layer = nn.Tanh()
+        self.sm_layer = nn.Softmax(dim=1)
+
     #Вначале данные x обрабатываются полносвязной сетью с функцией ReLU
     #На выходе происходит обработка функцией Tanh()
     def forward(self, x):
@@ -646,8 +650,9 @@ class MADDPG_Actor(nn.Module):
         network_out = self.MADDPG_Actor(x)
         #Обработка функцией Tanh()
         tanh_layer_out = self.tanh_layer(network_out)
+        sm_layer_out = self.sm_layer(network_out)
         #Выход нейронной сети
-        return tanh_layer_out
+        return sm_layer_out # tanh_layer_out
 
 #Определяем архитектуру нейронной сети критика
 class MADDPG_Critic(nn.Module):
@@ -670,14 +675,17 @@ class MADDPG_Critic(nn.Module):
             #Четвертый линейный слой обрабатывает выходные данные
             nn.Linear(30, 1)
             )
+        self.sm_layer = nn.Softmax(dim=1)
+
     #Данные x последовательно обрабатываются полносвязной сетью с функцией ReLU
     def forward(self, state, action):
         #Объединяем данные состояний и действий для передачи в сеть
         x = torch.cat([state, action], dim=2)
         #Результаты обработки
         Q_value = self.network(x)
+        sm_layer_out = self.sm_layer(Q_value)
         #Финальный выход нейронной сети
-        return Q_value
+        return sm_layer_out # Q_value
 
 class EpsilonGreedyStrategy():
     def __init__(self, start, end, decay, decay_steps):
@@ -979,7 +987,7 @@ class NoiseRateStrategy():
 #
 #     @staticmethod
 #     def get_next_v2(target_net, next_states):
-#         # batch_size = next_states.shape[0]
+#         v# batch_size = next_states.shape[0]
 #         # values = torch.zeros(batch_size).to(QValues.device)
 #         # values[non_final_state_locations] = target_net(next_states).max(dim=1)[0].detach()
 #         return target_net(next_states).max(dim=1)[0].detach()
@@ -1043,7 +1051,7 @@ def get_torch_device():
 #             nn.ReLU(),
 #             nn.Linear(128, n_actions)
 #         )
-#         self.sm_layer = nn.Softmax(dim=1)
+#         self.sm_layer = nn.Softmax(dim=1) # sm_layer_out = self.sm_layer(q_network_out)
 #
 #     def forward(self, x):
 #         q_network_out = self.Q_network(x)
@@ -1138,85 +1146,3 @@ def get_torch_device():
 #     else:
 #         moving_avg = torch.zeros(len(values))
 #         return moving_avg.numpy()
-#
-# # Learning Intrinsic Symbolic Rewards in RL (2020)
-# # https://arxiv.org/pdf/2010.03694.pdf
-#
-# def add(left, right):
-#     return left + right
-#
-# def subtract(left, right):
-#     return left - right
-#
-# def multiply(left, right):
-#     return left * right
-#
-# def cos(left):
-#     return np.cos(left)
-#
-# def sin(left):
-#     return np.sin(left)
-#
-# def tan(left):
-#     return np.tan(left)
-#
-# def npmax(nums):
-#     return np.maxmimum(nums)
-#
-# def npmin(nums):
-#     return np.minimum(nums)
-#
-# def pass_greater(left, right):
-#     if left > right: return left
-#     return right
-#
-# def pass_smaller(left, right):
-#     if left < right: return left
-#     return right
-#
-# def equal_to(left, right):
-#     return float(left == right)
-#
-# def gate(left, right, condtion):
-#     if condtion <= 0: return left
-#     else: return right
-#
-# def square(left):
-#     return left * left
-#
-# def is_negative(left):
-#     if left < 0: return 1.0
-#     return 0.0
-#
-# def div_by_100(left):
-#     return left / 100.0
-#
-# def div_by_10(left):
-#     return left / 10.0
-#
-# def protected_div(left, right):
-#     with np.errstate(divide='ignore', invalid='ignore'):
-#         x = np.divide(left, right)
-#         if isinstance(x, np.ndarray):
-#             x[np.isinf(x)] = 1
-#             x[np.isnan(x)] = 1
-#         elif np.isinf(x) or np.isnan(x):
-#             x = 1
-#     return x
-#
-# # An example of a discovered symbolic reward on PixelCopter. We unroll the correspond-
-# # ing symbolic tree into Python-like code that can be parsed and debugged.
-# # {si} represent state observations.
-# def get_intrinsic_reward(s_0, s_1, s_2, s_3, s_4, s_5, s_6, s_7):
-#     p_1 = tan(cos(s_4)); p_2 = cos(s_3); p_3 = pass_smaller(p_1, p_2)
-#     x_1 = multiply(-1, abs(subtract(s_7, p_3)))
-#     q_1 = multiply(-1, abs(subtract(1, s_4)))
-#     q_2 = max([s_2, 1, s_7, q_1, 0])
-#     q_3 = max([q_2, s_7, cos(0), multiply(s_0, s_6), multiply(s_5, subtract(s_6, 1))])
-#     y_1 = div_by_10(q_3)
-#     y_2 = square(s_7)
-#     y_3 = protected_div(1, div_by_100(s_0))
-#     x_2 = gate(y_1, y_2, y_3)
-#     z = equal_to(x_2, x_1)
-#     reward = add(0, pass_smaller(div_by_10(s_7), z))
-#     return reward
