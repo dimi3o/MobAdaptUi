@@ -306,7 +306,7 @@ class MainApp(App):
 
     def matplot_output(self):
         text_values = self.graph_values_mode.text
-        plt.figure(figsize=(10, 10)) # x1, y1 = zip(*self.graph1_points)
+        plt.figure(figsize=(5, 5)) # x1, y1 = zip(*self.graph1_points)
         if len(self.graph1_points)>0:
             plt.plot(self.graph1_points, '-', label="IQL", color='r') # *zip(*self.graph1_points)
             x, y, ci = self.get_plot_params(self.graph1_points)
@@ -332,7 +332,7 @@ class MainApp(App):
         script_dir = os.path.dirname(__file__)
         graphs_dir = os.path.join(script_dir, 'Graphs/')
         if not os.path.isdir(graphs_dir): os.makedirs(graphs_dir)
-        plt.savefig(graphs_dir + 'graph2.png', format='png', dpi = 300, pad_inches=0.05)
+        plt.savefig(graphs_dir + 'graph2.png', format='png', pad_inches=0.1) #, dpi = 300, pad_inches=0.05)
 
     def _update_clock(self, dt):
         m = self.modespinner.text

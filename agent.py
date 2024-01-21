@@ -109,9 +109,9 @@ class Environment:
         temp_cur_reward = cur_reward
         if self.last_reward.get(id, None) is not None:
             reward = self.app.sliders_reward[i].value
-            penalty_minus = self.app.sliders_reward[6].value
+            penalty_minus = -cur_reward/2 if self.app.sliders_reward[6].value!=0 else 0
             delta = cur_reward - self.last_reward[id][i]
-            cur_reward = 0 if reward == 0 else (1-cur_reward) if delta > 0 else -cur_reward if delta < 0 else 0
+            cur_reward = 0 if reward == 0 else (1-cur_reward) if delta > 0 else penalty_minus if delta < 0 else 0
             # if id == 15 and i == 3: print(f'cuv{i}={temp_cur_reward}  cur{i}={cur_reward}')
         else:
             cur_reward = 0
@@ -200,7 +200,7 @@ class Environment:
 
         cur_reward = self.usability_reward_mean
         delta = cur_reward - self.last_usability_reward if self.last_usability_reward!=0 else 0
-        self.usability_reward = 0 if delta == 0 else cur_reward if delta > 0 else -cur_reward if delta < 0 else 0
+        self.usability_reward = 0 if delta == 0 else cur_reward if delta > 0 else -cur_reward/2 if delta < 0 else 0
         self.last_usability_reward = cur_reward
         print(self.usability_reward, us_reward)
         return us_reward
