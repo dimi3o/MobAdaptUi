@@ -26,6 +26,9 @@ from kivy.graphics import Color, Rectangle
 from kivy.clock import Clock
 from kivy.config import Config
 from kivy_garden.graph import LinePlot
+from kivy.garden.matplotlib.backend_kivyagg import FigureCanvasKivyAgg
+import matplotlib.pyplot as plt
+import os
 
 WhiteBackColor = True
 __version__ = '0.0.3.4'
@@ -195,10 +198,11 @@ class MainApp(App):
         self.graph_widget_id = Spinner(text='1', values=[str(j) for j in range(1, 41)], background_color=(0.327, 0.634, 0.161, 1))
         self.root2.add_widget(self.ihbl([Label(text='REWARD/LOSS widget id:', color=(0, 0, 0, 1)), self.graph_widget_id]))
         self.reward_graph = Widgets.get_graph_widget(.5, .5, 0, .1, 0, .1, 'Time, [sec]', WhiteBackColor)
-        self.graph_layout = BoxLayout(orientation='horizontal', size_hint_y=None)
-        self.reward_graph.height = self.graph_layout.height = Window.height*5/7
+        self.graph_layout = BoxLayout(orientation='horizontal')  # self.reward_graph.height = self.graph_layout.height = Window.height*1./2.
         self.graph_layout.add_widget(self.reward_graph)
-        self.root2.add_widget(self.graph_layout)
+        # self.root2.add_widget(self.graph_layout)
+        self.graph_layout2 = BoxLayout(orientation='vertical')
+        self.root2.add_widget(self.graph_layout2)
 
         # SETTINGS SCREEN, dqn test
         self.console = TextInput(password=False, multiline=True, readonly=True)
@@ -288,8 +292,29 @@ class MainApp(App):
             Clock.unschedule(self._update_clock)
             self.env.stop_emulation()
             self.adapt_btn.background_color = (1, 0, 0, 1)
+            self.matplot_output()
             #self.show_popup(Text, Header)
             #print('- end of episode -')
+
+    def matplot_output(self):
+        # x_data = np.arange(0, len(self.loss_data))
+        # plt.plot(x_data, self.loss_data, '-', label="Loss")
+        # x1, y1 = zip(*self.reward_points)
+        plt.figure(figsize=(10, 10))
+        plt.plot(*zip(*self.reward_points), '-', label="Mean Loss")
+        plt.plot(*zip(*self.loss_points), '-', label="Loss")
+        plt.xlabel("Steps")
+        plt.ylabel("Value")
+        plt.legend(loc="best")
+        graph_widget = FigureCanvasKivyAgg(plt.gcf())
+        self.graph_layout2.add_widget(graph_widget)
+        self.save_plot(plt)
+
+    def save_plot(self, plt_sample):
+        script_dir = os.path.dirname(__file__)
+        graphs_dir = os.path.join(script_dir, 'Graphs/')
+        if not os.path.isdir(graphs_dir): os.makedirs(graphs_dir)
+        plt_sample.savefig(graphs_dir + 'graph2.png', format='png', dpi = 300, pad_inches=0.05)
 
     def _update_clock(self, dt):
         m = self.modespinner.text
@@ -299,8 +324,8 @@ class MainApp(App):
             reward = self.m_loss_data[widget_id]
             loss = self.loss_data[widget_id]
         elif m=='MAC':
-            reward = self.env.Reward_History[-1] # self.env.m_loss_actor[-1]
-            loss = self.env.Loss_History_actor[-1]#Loss_History[-1]
+            reward = self.env.m_loss_actor[-1] #self.env.Reward_History[-1]
+            loss = self.env.total_loss_actor[-1]#Loss_History[-1]
         #reward = self.total_reward
         #reward = self.total_reward / self.rewards_count
         self.reward_points.append((self.reward_graph.xmax, reward))

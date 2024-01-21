@@ -599,6 +599,8 @@ class Agent3:
         return reward
 
 class Agent4:
+    loss_data = [0]
+    m_loss = [0]
     widget=None
     device=None
 
