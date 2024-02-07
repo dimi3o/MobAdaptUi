@@ -79,7 +79,7 @@ class MainApp(App):
         super(MainApp, self).__init__(**kwargs)
         self.title = 'MARL Mobile User Interface v.'+__version__
         self.text_color = MyColors.get_textcolor(WhiteBackColor)
-        self.modes = ('DQN', 'MAC', 'Fly', 'Size', 'Rotate', 'Fly+Size+Rotate')
+        self.modes = ('DQN', 'MADDPG', 'Fly', 'Size', 'Rotate', 'Fly+Size+Rotate')
         self.cols_rows = ('1х1', '2х2', '3х3', '4х4', '5х5', '6х6', '8x5')
         self.objects = ('Apps', 'Foods', 'Widgets')
         self.kitchen = ('rus', 'eur', 'asia', 'ui vect')
@@ -119,7 +119,7 @@ class MainApp(App):
 
         #FOOT PANEL
         self.episodespinner = Spinner(text=self.episodes[0], values=self.episodes, size_hint_x=None, width='50dp', background_color=(0.225, 0.155, 0.564, 1))
-        self.modespinner = Spinner(text="MAC", values=self.modes, background_color=(0.127,0.854,0.561,1))
+        self.modespinner = Spinner(text="MADDPG", values=self.modes, background_color=(0.127,0.854,0.561,1))
         self.modespinner.bind(text=self.colrowspinner_selected_value)
         self.adapt_btn = Button(text='ADAPT UI', size_hint_y=None, height='30dp', background_color=(1, 0, 0, 1), on_press=self.adapt_ui) #on_press=lambda null: self.show_popup('MARLMUI starting... '+self.modespinner.text, 'Info'))
         test_btn = Button(text='TEST UI', size_hint_y=None, height='30dp', size_hint_x=None, width='100dp', background_color=(0, 0, 1, 1), on_press=lambda null: self.adapt_ui(self, False, True))
@@ -281,7 +281,7 @@ class MainApp(App):
                     s.total_loss = [0]
                     s.m_loss = [0]
                     if test: s.agent.strategy = agent.EpsilonGreedyStrategy(self.eps_end, self.eps_end, self.eps_decay, self.eps_decay_steps)
-        elif m == 'MAC':
+        elif m == 'MADDPG':
             self.env.change_emulation()
 
         if self.AdaptUiOnOff:
@@ -312,7 +312,7 @@ class MainApp(App):
             x, y, ci = self.get_plot_params(self.graph1_points)
             plt.fill_between(x, (y - ci), (y + ci), color='r', alpha=.1)
         if len(self.graph2_points) > 0:
-            plt.plot(self.graph2_points, '-', label="MAC", color='b')
+            plt.plot(self.graph2_points, '-', label="MADDPG", color='b')
             x, y, ci = self.get_plot_params(self.graph2_points)
             plt.fill_between(x, (y - ci), (y + ci), color='b', alpha=.1)
         plt.xlabel("Steps")
@@ -345,7 +345,7 @@ class MainApp(App):
             elif vm == 'REWARD': graph1 = self.reward_data[widget_id]
             else: graph1 = self.loss_data[widget_id]
             if graph1 != 0: self.graph1_points.append(graph1)
-        elif m=='MAC':
+        elif m=='MADDPG':
             graph2 = 0
             if vm == 'MEAN LOSS': graph2 = self.env.m_loss_actor[-1]
             elif vm=='TOTAL REWARD': graph2 = self.env.Reward_History[-1]
@@ -383,7 +383,7 @@ class MainApp(App):
         self.env = agent.Environment(steps_left*n_agents, steps_learning*n_agents, mode, self)
         if mode == 'DQN':
             self.env.strategy = agent.EpsilonGreedyStrategy(self.eps_start, self.eps_end, self.eps_decay, self.eps_decay_steps)
-        elif mode == 'MAC':
+        elif mode == 'MADDPG':
             self.env.strategy = agent.NoiseRateStrategy(self.noise_rate_min, self.noise_rate_max, self.noise_decay_steps)
             self.device = self.env.device = agent.get_torch_device()
             self.env.experience_buffer = deque(maxlen=self.buffer_len)
@@ -405,7 +405,7 @@ class MainApp(App):
                 s = FlyScatterV3(do_rotation=True, do_scale=True, auto_bring_to_front=False, do_collide_after_children=False)
                 s.app = self
                 if mode=='DQN': self.DQN_init_numpy(s, self.env)
-                elif mode=='MAC': self.MAC_init(s, self.env, self.device)
+                elif mode=='MADDPG': self.MADDPG_init(s, self.env, self.device)
                 hor.add_widget(s)
                 s.id = ids = self.IdsPngs[i*cols+j]
                 s.grid_rect = Widgets.get_random_widget('LineRectangle', 0, 0, Window.width // cols, Window.height // (rows + 1), f'S{i*cols+j}')
@@ -424,7 +424,7 @@ class MainApp(App):
 
             self.mainscreen_widgets.add_widget(hor)
 
-    def MAC_init(self, s, e, device):
+    def MADDPG_init(self, s, e, device):
         s.env = e
         s.set_vect_state()
         s.agent = agent.Agent4(self.strategy, e.num_actions_available(), s, device)
@@ -483,7 +483,7 @@ class MainApp(App):
     def reset_graph_points(self, allpoint=False):
         m = self.modespinner.text
         if m=='DQN': self.graph1_points = []
-        elif m=='MAC': self.graph2_points = []
+        elif m=='MADDPG': self.graph2_points = []
         # try:
         #     self.reward_graph.remove_plot(self.reward_plot)
         #     self.reward_graph.remove_plot(self.loss_plot)
