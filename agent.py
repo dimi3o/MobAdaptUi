@@ -33,7 +33,7 @@ class Environment:
     total_loss_actor = [0]
     m_loss_actor = [0]
 
-    def __init__(self, steps_left=200, steps_learning=150, mode='DQN', app=None):
+    def __init__(self, steps_left=200, steps_learning=150, mode='IQL', app=None):
         self.steps_left = steps_left
         self.steps_learning = steps_learning
         self.global_step = 0
@@ -68,7 +68,7 @@ class Environment:
 
     def action_space_sample(self): return random.choice(self.action_space)
 
-    def get_rewards(self, agent):
+    def get_rewards_v1(self, agent):
         cuv = agent.widget.vect_state #0 - self.id, 1 - self.taps, 2 - self.nx, 3 - self.ny, 4 - self.ns, 5 - self.nr
         id = cuv[0] - 1 # widjet id
         tuv = self.app.target_ui_vect[id] # 0 - self.nx, 1 - self.ny, 2 - self.ns, 3 - self.nr
@@ -100,24 +100,22 @@ class Environment:
         cuv = agent.widget.vect_state  # 0 - self.id, 1 - self.taps, 2 - self.nx, 3 - self.ny, 4 - self.ns, 5 - self.nr
         id = cuv[0] - 1  # widjet id
         tuv = self.app.target_ui_vect[id]  # 0 - self.nx, 1 - self.ny, 2 - self.ns, 3 - self.nr
-        cur_reward = 0
-        if action==0 or action==1: cur_reward = 1 - abs(tuv[0] - cuv[2]); i = 0  # nx, position X = action: 0 - left, 1 - right
-        elif action==2 or action==3: cur_reward = 1 - abs(tuv[1] - cuv[3]); i = 1  # ny, position Y = action: 2 - up, 3 - down
-        elif action==4 or action==5: cur_reward = 1 - abs(tuv[2] - cuv[4]); i = 2  # ns, scale = action: 4 - more, 5 - less
-        elif action==6 or action==7: cur_reward = 1 - abs(tuv[3] - cuv[5]); i = 3  # nr, rotate = action: 6 - rotate-, 7 - rotate+
+        if action==0 or action==1: rik = 1 - abs(tuv[0] - cuv[2]); i = 0  # nx, position X = action: 0 - left, 1 - right
+        elif action==2 or action==3: rik = 1 - abs(tuv[1] - cuv[3]); i = 1  # ny, position Y = action: 2 - up, 3 - down
+        elif action==4 or action==5: rik = 1 - abs(tuv[2] - cuv[4]); i = 2  # ns, scale = action: 4 - more, 5 - less
+        elif action==6 or action==7: rik = 1 - abs(tuv[3] - cuv[5]); i = 3  # nr, rotate = action: 6 - rotate-, 7 - rotate+
         else: return 0
-        temp_cur_reward = cur_reward
         if self.last_reward.get(id, None) is not None:
             reward = self.app.sliders_reward[i].value
-            penalty_minus = -cur_reward/2 if self.app.sliders_reward[6].value!=0 else 0
-            delta = cur_reward - self.last_reward[id][i]
-            cur_reward = 0 if reward == 0 else (1-cur_reward) if delta > 0 else penalty_minus if delta < 0 else 0
+            penalty_minus = -rik/2 if self.app.sliders_reward[6].value!=0 else 0
+            delta = rik - self.last_reward[id][i]
+            cur_reward = 0 if reward == 0 else (1-rik) if delta > 0 else penalty_minus if delta < 0 else 0
             # if id == 15 and i == 3: print(f'cuv{i}={temp_cur_reward}  cur{i}={cur_reward}')
         else:
             cur_reward = 0
             self.last_reward[id] = [0. for _ in range(5)]
-        self.last_reward[id][i] = temp_cur_reward
-        return cur_reward
+        self.last_reward[id][i] = rik
+        return cur_reward, rik
 
     def get_activation_reward(self, agent):
         cuv = agent.widget.vect_state  # 0 - self.id, 1 - self.taps, 2 - self.nx, 3 - self.ny, 4 - self.ns, 5 - self.nr
@@ -191,8 +189,6 @@ class Environment:
                 us_reward[i] = (a[i]/4) / n
             elif i==7:  # TV=100∙V_i/S_total,∀i, Vi – видимость функции [0, 1].
                 us_reward[i] = a[i] / n
-            #elif i==2: # BI=1/n*sum_n(Built_in_Icon(i)), Built_in_Icon(i)=1 if widjet (i) has icon
-            #    us_reward[i] = float(1)
 
         self.usability_reward_mean = np.mean(us_reward)
         self.usability_reward_median = np.median(us_reward)
@@ -210,11 +206,11 @@ class Environment:
         self.steps_left -= 1
         if self.is_done(): self.done = True
         r_us = self.usability_reward if us_r else 0
-        r_pos = self.get_local_reward(agent, action)
+        r_pos, rik = self.get_local_reward(agent, action)
         r_taps = self.get_activation_reward(agent)
         reward = r_pos + r_taps + r_us + penalty
         if tensor: return reward, torch.tensor([reward], device=agent.device), self.done
-        return reward, self.done
+        return reward, self.done, rik
 
     def is_done(self): return self.steps_left <= 0 or self.done
 
@@ -318,7 +314,7 @@ class Environment:
         reward_list = np.zeros([n_agents])
         reward = 0; terminated = False
         for i, action in enumerate(actionsFox):
-            r, d = self.take_action(int(action), widjets[i].agent, False)
+            r, d, rik = self.take_action(int(action), widjets[i].agent, False)
             reward_list[i] = r; terminated |= d
 
         # Суммируем награды за этот шаг для вычисления награды за эпизод
@@ -512,8 +508,8 @@ class Environment:
             self.app.stop_emulation_async('Adapt is stopped. End of episode!', 'Adapt', 0)
 
     def set_emulation(self, on=False):
-        method = self.usability_reward_update if self.mode == 'DQN' else self.MADDPG_emulation
-        time = 1. / 2. if self.mode=='DQN' else 1. / 30.
+        method = self.usability_reward_update if self.mode == 'IQL' else self.MADDPG_emulation
+        time = 1. / 2. if self.mode=='IQL' else 1. / 30.
         if on:
             Clock.schedule_interval(method, time)
             return True
@@ -567,7 +563,7 @@ class Agent3:
         action = self.select_action(action_probability, avail_actions_ind)
 
         # Передаем действия агентов в среду, получаем награду
-        reward, done = e.take_action(action, self)
+        reward, done, rik = e.take_action(action, self)
 
         # Получаем новое состояние среды
         next_state = e.get_obs_agent(self)
@@ -598,7 +594,7 @@ class Agent3:
             e.steps_learning -= 1
 
         # Собираем данные для графиков
-        return reward
+        return reward, rik
 
 class Agent4:
     loss_data = [0]
@@ -1014,17 +1010,17 @@ def get_torch_device():
     return torch.device("cuda" if torch.cuda.is_available() else "cpu")
 #
 # def get_nn_module(input_length, device):
-#     return DQN(input_length).to(device)
+#     return IQL(input_length).to(device)
 #
 # def get_nn_module1(input_length, device):
-#     return DQNtorch(input_length).to(device)
+#     return IQLtorch(input_length).to(device)
 #
 # def get_nn_module2(input_length, device):
 #     return Q_network(input_length).to(device)
 
-# class DQN(nn.Module):
+# class IQL(nn.Module):
 #     def __init__(self, state_len):
-#         super(DQN, self).__init__()
+#         super(IQL, self).__init__()
 #         # 0 - left, 1 - right, 2 - up, 3 - down, 4 - more, 5 - less, 6 - rotate left, 7 - rotate right
 #         self.fc1 = nn.Linear(in_features=state_len, out_features=64)
 #         self.fc2 = nn.Linear(in_features=64, out_features=64)
@@ -1058,10 +1054,10 @@ def get_torch_device():
 #         sm_layer_out = self.sm_layer(q_network_out)
 #         return sm_layer_out
 
-# class DQNtorch(nn.Module):
+# class IQLtorch(nn.Module):
 #
 #     def __init__(self, n_observations, n_actions=8):
-#         super(DQNtorch, self).__init__()
+#         super(IQLtorch, self).__init__()
 #         self.layer1 = nn.Linear(n_observations, 128)
 #         self.layer2 = nn.Linear(128, 128)
 #         self.layer3 = nn.Linear(128, n_actions)

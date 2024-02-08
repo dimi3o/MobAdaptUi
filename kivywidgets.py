@@ -134,16 +134,17 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
 
     def toFixed(self,numObj, digits=0): return f"{numObj:.{digits}f}"
 
-    def DQN_adapt(self, *args):
-        r = self.MARL_core()
+    def IQL_adapt(self, *args):
+        r, rik = self.MARL_core()
         self.app.rewards_count += 1
         self.app.reward_data[int(self.id) - 1] = r  # self.agent.reward_data[-1]
+        self.app.reward_ik_data[int(self.id) - 1] = rik
         self.app.cumulative_reward_data[int(self.id) - 1] += r  # self.agent.reward_data[-1]
         self.app.loss_data[int(self.id) - 1] = self.agent.loss_data[-1]
         self.app.m_loss_data[int(self.id) - 1] = self.agent.m_loss[-1]
         if self.env.is_done():
             self.emulation = self.set_emulation(False)
-            self.app.stop_emulation_async('DQN adapt is stopped. End of episode!', 'Adapt',
+            self.app.stop_emulation_async('IQL adapt is stopped. End of episode!', 'Adapt',
                                           self.agent.total_reward)
             # print(self.id, self.taps, self.nx, self.ny, self.ns, self.nr)
         # self.children[0].text = f'{self.toFixed(sum(self.vect_state[2:]) / len(self.vect_state[2:]), 2)}'
@@ -152,7 +153,7 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
         self.app.current_ui_vect[v[0] - 1] = v[2:]
 
     def MARL_core(self):
-        r = self.agent.step(self.env)
+        r, rik = self.agent.step(self.env)
 
         # target_net_state_dict = self.target_net.state_dict()
         # policy_net_state_dict = self.policy_net.state_dict()
@@ -169,7 +170,7 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
         if self.env.steps_left % self.app.target_update == 0:
             self.target_net.load_state_dict(self.policy_net)
 
-        return r
+        return r, rik
 
     def set_vect_state(self):
         nx = (self.x + self.size[0]/self.scale) / Window.width
@@ -241,7 +242,7 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
         self.emulation = self.set_emulation(False)
 
     def set_emulation(self, on=False):
-        method = self.DQN_adapt if self.mode == 'DQN' else self.simple_adapt
+        method = self.IQL_adapt if self.mode == 'IQL' else self.simple_adapt
         if on:
             Clock.schedule_interval(method, 1. / 30.)
             return True

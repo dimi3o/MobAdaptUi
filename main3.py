@@ -41,16 +41,18 @@ class MainApp(App):
     total_reward = 0
     rewards_count = 0
     reward_data = []
+    reward_ik_data = []
     cumulative_reward_data = []
     loss_data = []
     m_loss_data = []
+    graph_points_for_mean = []
     graph1_points = []
     graph2_points = []
     target_ui_vect = [[0. for j in range(4)] for i in range(40)]
     current_ui_vect = [[0. for j in range(4)] for i in range(40)]
     sliders_reward = []
     strategy = None
-    # DQN hyperparameters
+    # IQL hyperparameters
     batch_size = 128
     gamma = 0.99
     eps_start = 0.9
@@ -79,7 +81,7 @@ class MainApp(App):
         super(MainApp, self).__init__(**kwargs)
         self.title = 'MARL Mobile User Interface v.'+__version__
         self.text_color = MyColors.get_textcolor(WhiteBackColor)
-        self.modes = ('DQN', 'MADDPG', 'Fly', 'Size', 'Rotate', 'Fly+Size+Rotate')
+        self.modes = ('IQL', 'MADDPG', 'Fly', 'Size', 'Rotate', 'Fly+Size+Rotate')
         self.cols_rows = ('1х1', '2х2', '3х3', '4х4', '5х5', '6х6', '8x5')
         self.objects = ('Apps', 'Foods', 'Widgets')
         self.kitchen = ('rus', 'eur', 'asia', 'ui vect')
@@ -199,7 +201,7 @@ class MainApp(App):
         self.root3.add_widget(self.ihbl([Label(text='Kitchen:', color=(0, 0, 1, 1)),self.kitchenspinner]))
 
         # SETTINGS SCREEN, graph tab
-        self.graph_values_mode = Spinner(text='MEAN LOSS', values=['MEAN LOSS', 'LOSS', 'TOTAL REWARD', 'REWARD'], background_color=(0.127, 0.234, 0.761, 1))
+        self.graph_values_mode = Spinner(text='MEAN LOSS', values=['MEAN LOSS', 'LOSS', 'TOTAL REWARD', 'REWARD', 'REWARD ik ', 'MEAN REWARD ik'], background_color=(0.127, 0.234, 0.761, 1))
         self.root2.add_widget(self.ihbl([Label(text='Graph values:', color=(0, 0, 0, 1)), self.graph_values_mode]))
         self.graph_widget_id = Spinner(text='1', values=[str(j) for j in range(1, 41)], background_color=(0.327, 0.634, 0.161, 1))
         self.root2.add_widget(self.ihbl([Label(text='Widget ID:', color=(0, 0, 0, 1)), self.graph_widget_id]))
@@ -270,7 +272,7 @@ class MainApp(App):
             self.env.total_loss_actor = [0]
             self.env.m_loss_actor = [0]
 
-        if m == 'DQN':
+        if m == 'IQL':
             for s in self.FlyScatters:
                 s.mode = m
                 s.change_emulation()
@@ -306,6 +308,7 @@ class MainApp(App):
 
     def matplot_output(self):
         text_values = self.graph_values_mode.text
+        vm = self.graph_values_mode.text
         plt.figure(figsize=(5, 5)) # x1, y1 = zip(*self.graph1_points)
         if len(self.graph1_points)>0:
             plt.plot(self.graph1_points, '-', label="IQL", color='r') # *zip(*self.graph1_points)
@@ -337,12 +340,16 @@ class MainApp(App):
     def _update_clock(self, dt):
         m = self.modespinner.text
         vm = self.graph_values_mode.text
-        if m=='DQN':
+        if m=='IQL':
             graph1 = 0
             widget_id = int(self.graph_widget_id.text)-1
             if vm == 'MEAN LOSS': graph1 = self.m_loss_data[widget_id]
             elif vm=='TOTAL REWARD': graph1 = self.cumulative_reward_data[widget_id]
             elif vm == 'REWARD': graph1 = self.reward_data[widget_id]
+            elif vm == 'REWARD ik': graph1 = self.reward_ik_data[widget_id]
+            elif vm == 'MEAN REWARD ik':
+                self.graph_points_for_mean.append(np.mean(self.reward_ik_data))
+                self.graph1_points.append(np.sum(self.graph_points_for_mean[-1000:])) #np.mean(self.total_loss[-1000:])
             else: graph1 = self.loss_data[widget_id]
             if graph1 != 0: self.graph1_points.append(graph1)
         elif m=='MADDPG':
@@ -371,6 +378,7 @@ class MainApp(App):
         rows = int(TextSize[0])
         cols = int(TextSize[2])
         self.reward_data = [0. for i in range(40)]
+        self.reward_ik_data = [0. for i in range(40)]
         self.cumulative_reward_data = [0. for i in range(40)]
         self.loss_data = [0. for i in range(40)]
         self.m_loss_data = [0. for i in range(40)]
@@ -381,7 +389,7 @@ class MainApp(App):
         steps_left = int(self.episodespinner.text)
         steps_learning = int((int(self.episodespinner.text) - self.batch_size) * self.steps_learning)
         self.env = agent.Environment(steps_left*n_agents, steps_learning*n_agents, mode, self)
-        if mode == 'DQN':
+        if mode == 'IQL':
             self.env.strategy = agent.EpsilonGreedyStrategy(self.eps_start, self.eps_end, self.eps_decay, self.eps_decay_steps)
         elif mode == 'MADDPG':
             self.env.strategy = agent.NoiseRateStrategy(self.noise_rate_min, self.noise_rate_max, self.noise_decay_steps)
@@ -404,7 +412,7 @@ class MainApp(App):
             for j in range(cols):
                 s = FlyScatterV3(do_rotation=True, do_scale=True, auto_bring_to_front=False, do_collide_after_children=False)
                 s.app = self
-                if mode=='DQN': self.DQN_init_numpy(s, self.env)
+                if mode=='IQL': self.IQL_init_numpy(s, self.env)
                 elif mode=='MADDPG': self.MADDPG_init(s, self.env, self.device)
                 hor.add_widget(s)
                 s.id = ids = self.IdsPngs[i*cols+j]
@@ -437,7 +445,7 @@ class MainApp(App):
         s.optimizer = agent.get_optimizer_Adam(s.actor_network, self.alpha_actor)
         s.objective = agent.get_MSELoss_func()
 
-    def DQN_init_numpy(self, s, e):
+    def IQL_init_numpy(self, s, e):
         s.env = e
         s.set_vect_state()
         s.agent = agent.Agent3(e.strategy, deque(maxlen=self.memory_size), e.num_actions_available(), s)
@@ -445,7 +453,7 @@ class MainApp(App):
         s.target_net = dqnvianumpy.model.neural_network(e.num_state_available(s.agent)-1, self.hidden_layer, e.num_actions_available(), self.lr)
         s.target_net.load_state_dict(s.policy_net)
 
-    def DQN_init(self, s, e):
+    def IQL_init(self, s, e):
         s.env = e
         s.set_vect_state()
         s.agent = agent.Agent(s.app.strategy, agent.ReplayMemoryPyTorch(self.memory_size), e.num_actions_available(), s)
@@ -482,7 +490,7 @@ class MainApp(App):
 
     def reset_graph_points(self, allpoint=False):
         m = self.modespinner.text
-        if m=='DQN': self.graph1_points = []
+        if m=='IQL': self.graph1_points = []
         elif m=='MADDPG': self.graph2_points = []
         # try:
         #     self.reward_graph.remove_plot(self.reward_plot)
