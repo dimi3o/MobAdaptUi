@@ -201,7 +201,7 @@ class MainApp(App):
         self.root3.add_widget(self.ihbl([Label(text='Kitchen:', color=(0, 0, 1, 1)),self.kitchenspinner]))
 
         # SETTINGS SCREEN, graph tab
-        self.graph_values_mode = Spinner(text='MEAN LOSS', values=['MEAN LOSS', 'LOSS', 'TOTAL REWARD', 'REWARD', 'REWARD ik ', 'MEAN REWARD ik'], background_color=(0.127, 0.234, 0.761, 1))
+        self.graph_values_mode = Spinner(text='MEAN LOSS', values=['MEAN LOSS', 'LOSS', 'TOTAL REWARD', 'REWARD', 'MEAN REWARD ik ', 'MOV.AVER. REWARD ik', 'DISC.CUMM. REWARD ik'], background_color=(0.127, 0.234, 0.761, 1))
         self.root2.add_widget(self.ihbl([Label(text='Graph values:', color=(0, 0, 0, 1)), self.graph_values_mode]))
         self.graph_widget_id = Spinner(text='1', values=[str(j) for j in range(1, 41)], background_color=(0.327, 0.634, 0.161, 1))
         self.root2.add_widget(self.ihbl([Label(text='Widget ID:', color=(0, 0, 0, 1)), self.graph_widget_id]))
@@ -346,10 +346,13 @@ class MainApp(App):
             if vm == 'MEAN LOSS': graph1 = self.m_loss_data[widget_id]
             elif vm=='TOTAL REWARD': graph1 = self.cumulative_reward_data[widget_id]
             elif vm == 'REWARD': graph1 = self.reward_data[widget_id]
-            elif vm == 'REWARD ik': graph1 = self.reward_ik_data[widget_id]
-            elif vm == 'MEAN REWARD ik':
+            elif vm == 'MEAN REWARD ik': graph1 = self.reward_ik_data[widget_id]
+            elif vm == 'MOV.AVER. REWARD ik':
                 self.graph_points_for_mean.append(np.mean(self.reward_ik_data))
                 self.graph1_points.append(np.sum(self.graph_points_for_mean[-1000:])) #np.mean(self.total_loss[-1000:])
+            elif vm == 'DISC.CUMM. REWARD ik':
+                self.total_reward += np.sum(self.reward_ik_data) * self.gamma**self.FlyScatters[widget_id].agent.current_step
+                self.graph1_points.append(self.total_reward)
             else: graph1 = self.loss_data[widget_id]
             if graph1 != 0: self.graph1_points.append(graph1)
         elif m=='MADDPG':
