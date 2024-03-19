@@ -1,6 +1,5 @@
 import random
 import numpy as np
-# import torch
 import agent
 import dqnvianumpy
 from collections import deque
@@ -94,15 +93,10 @@ class MainApp(App):
         self.window_width = Window.width
         self.window_height = Window.height
 
-    def on_resize_my(self, oldsize, newsize):
-        pass
-        # self.reward_graph.height = self.graph_layout.height = Window.height * 5 / 7
 
     def build(self):
-        Window.bind(size=self.on_resize_my)
-
         # MAIN SCREEN
-        self.root = BoxLayout(orientation='vertical', padding=10)  # ,size_hint_y=None)
+        self.root = BoxLayout(orientation='vertical', padding=10)
 
         #HEAD PANEL
         self.colrowspinner = Spinner(text=self.cols_rows[6], values=self.cols_rows, background_color=(0.527, 0.154, 0.861, 1))
@@ -123,7 +117,7 @@ class MainApp(App):
         self.episodespinner = Spinner(text=self.episodes[0], values=self.episodes, size_hint_x=None, width='50dp', background_color=(0.225, 0.155, 0.564, 1))
         self.modespinner = Spinner(text="MADDPG", values=self.modes, background_color=(0.127,0.854,0.561,1))
         self.modespinner.bind(text=self.colrowspinner_selected_value)
-        self.adapt_btn = Button(text='ADAPT UI', size_hint_y=None, height='30dp', background_color=(1, 0, 0, 1), on_press=self.adapt_ui) #on_press=lambda null: self.show_popup('MARLMUI starting... '+self.modespinner.text, 'Info'))
+        self.adapt_btn = Button(text='ADAPT UI', size_hint_y=None, height='30dp', background_color=(1, 0, 0, 1), on_press=self.adapt_ui)
         test_btn = Button(text='TEST UI', size_hint_y=None, height='30dp', size_hint_x=None, width='100dp', background_color=(0, 0, 1, 1), on_press=lambda null: self.adapt_ui(self, False, True))
         quit_btn = Button(text='QUIT', size_hint_y=None, height='30dp', background_color=(0.9, 0.9, 0.9, 1), on_press=lambda null: self.get_running_app().stop())
         sett_btn = Button(text='SETTINGS', size_hint_y=None, height='30dp', background_color=(0.2, 0.2, 0.2, 1), on_press=lambda null: self.to_screen('settings', 'left'))
@@ -175,12 +169,12 @@ class MainApp(App):
         self.root4 = BoxLayout(orientation='vertical', padding=10) #dqn test
 
         # SETTINGS SCREEN, reward func tab
-        self.targetUiVect = TextInput(password=False, multiline=True) #, readonly=True)
+        self.targetUiVect = TextInput(password=False, multiline=True)
         cur_sl_label = Label(text='REWARDS: _._', color=(1, 0, 0, 1))
         temp_sliders = [cur_sl_label]; sliders = []; checkboxes = []; values = []
         for i in range(17):
             param = 'nx' if i==0 else 'ny' if i==1 else 'ns' if i==2 else 'nr' if i==3 else 'nt' if i==4 else 'p+'if i==5 else 'p-' if i==6 else self.usability_metrics[i-7]
-            sl_label = Label(text=f'{param}', color=(0, 0, 0, 1), size_hint_x=None, width='20dp', halign='center')#, halign='auto') #size_hint_x=None, width='90dp',
+            sl_label = Label(text=f'{param}', color=(0, 0, 0, 1), size_hint_x=None, width='20dp', halign='center')
             value = 0.01 if i == 5 else .95 if i == 4 or i == 3 else 0.55 if i < 5 else -.95 if i<7 else .95
             values.append(value)
             slider = Widgets.get_random_widget('Slider', -2., 2., value, 0.01)
@@ -206,9 +200,6 @@ class MainApp(App):
         self.graph_widget_id = Spinner(text='1', values=[str(j) for j in range(1, 41)], background_color=(0.327, 0.634, 0.161, 1))
         self.root2.add_widget(self.ihbl([Label(text='Widget ID:', color=(0, 0, 0, 1)), self.graph_widget_id]))
         self.reward_graph = Widgets.get_graph_widget(.5, .5, 0, .1, 0, .1, 'Time, [sec]', WhiteBackColor)
-        # self.graph_layout = BoxLayout(orientation='horizontal')  # self.reward_graph.height = self.graph_layout.height = Window.height*1./2.
-        # self.graph_layout.add_widget(self.reward_graph)
-        # self.root2.add_widget(self.graph_layout)
         self.root2.add_widget(self.ihbl([Button(text='Save graph', size_hint_y=None, height='30dp', on_press=lambda null: self.save_plot()),
                                          Button(text='Reset points', size_hint_y=None, height='30dp', color=(1, 0, 0, 1), on_press=lambda null: self.reset_graph_points(True))]))
         self.graph_layout2 = BoxLayout(orientation='vertical')
@@ -253,7 +244,6 @@ class MainApp(App):
 
     def adapt_ui(self, instance, learning=True, test=False):
         m = self.modespinner.text
-        #self.show_popup('This adapt ui in the pipeline...', self.modespinner.text)
         self.AdaptUiOnOff = not self.AdaptUiOnOff
         self.adapt_btn.background_color = (0.127, 0.854, 0.561, 1) if self.AdaptUiOnOff else (1, 0, 0, 1)
 
@@ -303,15 +293,13 @@ class MainApp(App):
             self.env.stop_emulation()
             self.adapt_btn.background_color = (1, 0, 0, 1)
             self.matplot_output()
-            #self.show_popup(Text, Header)
-            #print('- end of episode -')
 
     def matplot_output(self):
         text_values = self.graph_values_mode.text
         vm = self.graph_values_mode.text
-        plt.figure(figsize=(5, 5)) # x1, y1 = zip(*self.graph1_points)
+        plt.figure(figsize=(5, 5))
         if len(self.graph1_points)>0:
-            plt.plot(self.graph1_points, '-', label="IQL", color='r') # *zip(*self.graph1_points)
+            plt.plot(self.graph1_points, '-', label="IQL", color='r')
             x, y, ci = self.get_plot_params(self.graph1_points)
             plt.fill_between(x, (y - ci), (y + ci), color='r', alpha=.1)
         if len(self.graph2_points) > 0:
@@ -327,7 +315,7 @@ class MainApp(App):
 
     def get_plot_params(self, graph_points):
         y = np.asarray(graph_points)
-        x = [i for i, v in enumerate(graph_points)]  # x_data = np.arange(0, len(self.loss_data))
+        x = [i for i, v in enumerate(graph_points)]
         ci = 1.96 * np.std(graph_points) / np.sqrt(len(x))
         return x, y, ci
 
@@ -335,7 +323,7 @@ class MainApp(App):
         script_dir = os.path.dirname(__file__)
         graphs_dir = os.path.join(script_dir, 'Graphs/')
         if not os.path.isdir(graphs_dir): os.makedirs(graphs_dir)
-        plt.savefig(graphs_dir + 'graph2.png', format='png', pad_inches=0.1) #, dpi = 300, pad_inches=0.05)
+        plt.savefig(graphs_dir + 'graph2.png', format='png', pad_inches=0.1)
 
     def _update_clock(self, dt):
         m = self.modespinner.text
@@ -349,7 +337,7 @@ class MainApp(App):
             elif vm == 'MEAN REWARD ik': graph1 = self.reward_ik_data[widget_id]
             elif vm == 'MOV.AVER. REWARD ik':
                 self.graph_points_for_mean.append(np.mean(self.reward_ik_data))
-                self.graph1_points.append(np.sum(self.graph_points_for_mean[-1000:])) #np.mean(self.total_loss[-1000:])
+                self.graph1_points.append(np.sum(self.graph_points_for_mean[-1000:]))
             elif vm == 'DISC.CUMM. REWARD ik':
                 self.total_reward += np.sum(self.reward_ik_data) * self.gamma**self.FlyScatters[widget_id].agent.current_step
                 self.graph1_points.append(self.total_reward)
@@ -362,15 +350,6 @@ class MainApp(App):
             elif vm == 'REWARD': graph2 = self.env.reward_data[-1]
             else: graph2 = self.env.total_loss_actor[-1]
             if graph2!=0: self.graph2_points.append(graph2)
-        #reward = self.total_reward
-        #reward = self.total_reward / self.rewards_count
-        # self.graph1_points.append((self.reward_graph.xmax, reward))
-        # self.graph2_points.append((self.reward_graph.xmax, loss))
-        # self.reward_plot.points = self.graph1_points
-        # self.loss_plot.points = self.graph2_points
-        # self.reward_graph.xmax += 1 / 8.
-        # self.expand_graph_axes(self.reward_graph, new_ymax=reward)
-        # self.expand_graph_axes(self.reward_graph, new_ymax=loss)
 
     def mainscreen_rebuild_btn_click(self, instance):
         self.mainscreen_widgets.clear_widgets()
@@ -422,8 +401,8 @@ class MainApp(App):
                 s.grid_rect = Widgets.get_random_widget('LineRectangle', 0, 0, Window.width // cols, Window.height // (rows + 1), f'S{i*cols+j}')
                 if self.grid_flag.active: s.add_widget(s.grid_rect)
                 w = Widgets.get_app_icon(ids) if Objects=='Apps' else Widgets.get_food_icon(ids) if Objects=='Foods' else Widgets.get_random_widget()
-                w.width = f'{360 // cols}dp'#f'{Window.width//cols}dp'
-                w.height = f'{800 // rows}dp'#f'{Window.height//(rows+3)}dp'
+                w.width = f'{360 // cols}dp'
+                w.height = f'{800 // rows}dp'
                 s.add_widget(w)
                 wi = Widgets.get_random_widget('Label')
                 s.add_widget(wi)
@@ -495,16 +474,6 @@ class MainApp(App):
         m = self.modespinner.text
         if m=='IQL': self.graph1_points = []
         elif m=='MADDPG': self.graph2_points = []
-        # try:
-        #     self.reward_graph.remove_plot(self.reward_plot)
-        #     self.reward_graph.remove_plot(self.loss_plot)
-        # except: pass
-        # self.reward_plot = LinePlot(line_width=2, color=[1, 0, 0, 1])
-        # self.loss_plot = LinePlot(line_width=2, color=[0, 0, 1, 1])
-        # self.reward_graph.add_plot(self.reward_plot)
-        # self.reward_graph.add_plot(self.loss_plot)
-        # self.reward_graph.x_ticks_major = .5; self.reward_graph.y_ticks_major = .1
-        # self.reward_graph.xmin = 0; self.reward_graph.xmax = .1; self.reward_graph.ymin = 0; self.reward_graph.ymax = .1
 
     def do_current_ui_vect(self, vect):
         self.current_ui_vect[vect[0]-1] = [vect[2], vect[3], vect[4], vect[5]]
@@ -528,13 +497,9 @@ class MainApp(App):
             self.target_ui_vect = [v for v in self.current_ui_vect]
         else:
             self.target_ui_vect = Widgets.target_ui(text)
-        # print(self.target_ui_vect[1][1])
         self.targetUiVect.text = str(self.target_ui_vect).replace(' ','')
 
-    # May Be Need Asynchronous app
-    # https://kivy.org/doc/stable/api-kivy.app.html#module-kivy.app
     def test_dqn(self, instance):
-        # self.cclear()
         if self.dqnmodespinner.text == "train":
             train_main(self.dqnr_modespinner.text, self)
         else:
@@ -557,7 +522,6 @@ class MainApp(App):
     def to_screen(self, namescreen='mainscreen', direction='right'):
         self.sm.transition.direction = direction
         self.sm.current = namescreen
-        # if namescreen == 'settings': print(self.current_ui_vect)
 
     def colrowspinner_selected_value(self, spinner, text):
         self.mainscreen_rebuild_btn_click(self)
@@ -597,14 +561,8 @@ class MainApp(App):
         popup.open()
 
 if __name__ == "__main__":
-    # Window.minimum_height = 800
-    # Window.minimum_width = 300
-    # Window.on_resize(300, 800)
     Config.set('graphics', 'width', '300')
     Config.set('graphics', 'height', '800')
-    Window.size = (435, 940) #(635, 640)
+    Window.size = (435, 940)
     app = MainApp()
     app.run()
-    # x = torch.randn(5)
-    # y = torch.randn(5)
-    # print(torch.cat([], 0))

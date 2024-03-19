@@ -84,7 +84,6 @@ class neural_network():
         l2o = linear(u2)
 
         return softmax(l2o)
-        # return l2o
 
     def save_model(self, name):
         """

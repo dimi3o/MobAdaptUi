@@ -207,7 +207,6 @@ def test_main(model_name, console):
     env.render(console)
     done = False
     for _ in range(100):
-        #time.sleep(0.5)
         action = np.argmax(model.predict(np.array([state])))
         next_state, _, done = env.step(action)
         state = next_state
@@ -217,9 +216,3 @@ def test_main(model_name, console):
             break
 
 
-# if __name__ == "__main__":
-#     args = get_args()
-#     if args.mode == "train":
-#         train_main(args.r_mode)
-#     else:
-#         test_main(args.model)

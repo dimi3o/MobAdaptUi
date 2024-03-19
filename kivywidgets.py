@@ -89,7 +89,7 @@ class Widgets(object):
         elif name == 'asia':
             return[[0.8888862813863778,0.15269421296699776,0.5125932435159464,0.9868067693568788],[0.30158237228636176,0.21590533699288564,0.3920929962564511,0.982197145446398],[0.8183863769833517,0.14288520378255842,0.4084024978249332,0.9976533359716838],[0.7931030600910343,0.14255305279167269,0.3749999999999933,0.9999990000000006],[0.40007713755748653,0.8107717161079173,0.5349704040123509,0.9479513128576931],[0.735845471152767,0.1584907733574239,0.5461593732577161,0.9706468483123697],[0.8757240904267494,0.1760431874308792,0.3885969124553464,0.9940543910271351],[0.855412100107758,0.20990580468509165,0.34717019873792954,0.9914558200850112],[0.8540954563903475,0.19161642323556238,0.3825927687787133,0.994549585052069],[0.8945297704051732,0.16894216131520404,0.4066289337241748,0.995461230217171],[0.7109352301180977,0.7096401599087033,1,0.9634687570912629],[0.36794947291084695,0.44260766594977924,0.4112959339904618,0.9964857090748441],[0.8227818147999959,0.19744531337001825,0.33868767030704827,0.9858090639745374],[0.913915672435171,0.1739938305721302,0.36585338179651805,0.9973563505252141],[0.3524801765660715,0.2840121520910154,0.404562151883731,0.993008842190622],[0.16125729312895232,0.8379839547900515,0.5404025637091928,0.9950433030069974],[0.897254288037726,0.16883654694648936,0.4010925569161031,0.9942814733094082],[0.3229384086242926,0.8669547763807929,0.8589263041685535,0.9941336039059276],[0.8514440282137556,0.1399154062215413,0.3652847012309647,0.9960850336533938],[0.7771464799073219,0.15223488995723344,0.4368822922092697,0.9964587172030652],[0.8572356201797001,0.19391628224254231,0.34265805136705046,0.9903473687564132],[0.18085086360378663,0.9202816718819877,0.5229140810364795,0.9986436099926995],[0.14820474835673295,0.4487440573054947,0.4943595557832491,0.995032986893032],[0.867655056586805,0.17533997377358224,0.3225491245299484,0.9958292400202001],[0.8736672076096086,0.18288156622889634,0.45646794577968586,0.9958318226648604],[0.9414092381791973,0.19253776856297067,0.39633400151118053,0.9941910700496506],[0.18568097463260838,0.25172065511963904,0.45886521714209055,0.993517006401982],[0.46070395102568834,0.2783043392723975,0.4470727398372869,0.9874600078378108],[0.2934205933447613,0.33713990423183765,0.5046181637936028,0.9909069053243513],[0.8459879907889742,0.2105322062856511,0.2946398636715396,0.9911384429500256],[0.71277998691778,0.5116209442184415,0.938887815906852,0.9644329014318787],[0.8156436979742873,0.17016351607682423,0.5705602955440975,0.9942771914400548],[0.8857453330707344,0.16600821475671376,0.3804742309046725,0.9946735572170688],[0.14612790816012539,0.35856530262385317,0.44632640468146445,0.994746838308531],[0.6510442479691141,0.5712755409515068,1,0.9961308977604741],[0.8980452297102082,0.13844459387560476,0.4262630632891769,0.9904932810806789],[0.5100294615947746,0.37900030087398934,0.5123475457347365,0.9936356508990281],[0.24863033837447918,0.7221701786855785,0.6772150597610804,0.988605808212526],[0.543822851317542,0.31729396037427204,0.4683972019104477,0.9948012352350819],[0.6567021925321455,0.37401546480500875,1,0.9999149801821571]]
 
-class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
+class FlyScatterV3(Scatter):
     velocity = ListProperty([2, 1])
     emulation = BooleanProperty(False)
     mode = 'Fly adapt'
@@ -127,45 +127,27 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
         self.taps += 1
         self.children[0].text = f'taps: {self.taps}'
         self.set_vect_state()
-        # self.env.get_rewards()
-        # rewards = self.env.last_reward[int(self.id)-1][:-1]
-        # print(sum(rewards)/len(rewards), rewards)
-        # print(self.vect_state[2:])
 
     def toFixed(self,numObj, digits=0): return f"{numObj:.{digits}f}"
 
     def IQL_adapt(self, *args):
         r, rik = self.MARL_core()
         self.app.rewards_count += 1
-        self.app.reward_data[int(self.id) - 1] = r  # self.agent.reward_data[-1]
+        self.app.reward_data[int(self.id) - 1] = r
         self.app.reward_ik_data[int(self.id) - 1] = rik
-        self.app.cumulative_reward_data[int(self.id) - 1] += r  # self.agent.reward_data[-1]
+        self.app.cumulative_reward_data[int(self.id) - 1] += r
         self.app.loss_data[int(self.id) - 1] = self.agent.loss_data[-1]
         self.app.m_loss_data[int(self.id) - 1] = self.agent.m_loss[-1]
         if self.env.is_done():
             self.emulation = self.set_emulation(False)
             self.app.stop_emulation_async('IQL adapt is stopped. End of episode!', 'Adapt',
                                           self.agent.total_reward)
-            # print(self.id, self.taps, self.nx, self.ny, self.ns, self.nr)
-        # self.children[0].text = f'{self.toFixed(sum(self.vect_state[2:]) / len(self.vect_state[2:]), 2)}'
 
         v = self.vect_state
         self.app.current_ui_vect[v[0] - 1] = v[2:]
 
     def MARL_core(self):
         r, rik = self.agent.step(self.env)
-
-        # target_net_state_dict = self.target_net.state_dict()
-        # policy_net_state_dict = self.policy_net.state_dict()
-        # for key in policy_net_state_dict:
-        #     target_net_state_dict[key] = policy_net_state_dict[key] * self.app.TAU + target_net_state_dict[key] * (1 - self.app.TAU)
-        # self.target_net.load_state_dict(target_net_state_dict)
-        
-
-        # Синхронизируем веса основной и целевой нейронной сети каждые target_update шагов
-        # if self.env.steps_left % self.app.target_update == 0:
-        #     self.target_net.load_state_dict(self.policy_net.state_dict())
-        #     # print('--- target_net update ---')
 
         if self.env.steps_left % self.app.target_update == 0:
             self.target_net.load_state_dict(self.policy_net)
@@ -176,7 +158,6 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
         nx = (self.x + self.size[0]/self.scale) / Window.width
         ny = (self.y + self.size[1]/self.scale) / Window.height
         ns = min(1, max(0, (self.scale - 0.4) / (2 - 0.4)))
-        # nr = ((self.rotation-180)/180 + 1) / 2
         nr = abs((self.rotation - 180) / 360) * 2
         nt = min(1, self.taps / 10)
         self.vect_state = [int(self.id), nt, nx, ny, ns, nr]
@@ -187,7 +168,6 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
         self.x = v[0] * Window.width - self.size[0]/self.scale
         self.y = v[1] * Window.height - self.size[1]/self.scale
         self.rotation = (v[3] / 2) * 360 + 180
-        # self.rotation = (v[3] * 2 - 1) * 180 + 180
 
     # norm value: nx = (x – мин(х)) / (макс(х) – мин(х))
     def norm_min_max(self, value, minv, maxv): return (value - minv) / (maxv - minv)
@@ -201,18 +181,9 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
         elif to==3 and self.y>0: self.y -= deltapos
         elif to==4 and self.scale<2.: self.scale += deltascale
         elif to==5 and self.scale>0.4: self.scale -= deltascale
-        elif to==6: self.rotation -= 1 # and (self.rotation>265 or self.rotation==0.)
-        elif to==7: self.rotation += 1 # and self.rotation<110
+        elif to==6: self.rotation -= 1
+        elif to==7: self.rotation += 1
         else: r = self.app.sliders_reward[6].value  # penalty for inaction
-        # if to==0: self.x -= deltapos
-        # elif to==1: self.x += deltapos
-        # elif to==2: self.y += deltapos
-        # elif to==3: self.y -= deltapos
-        # elif to==4: self.scale += deltascale
-        # elif to==5: self.scale -= deltascale
-        # elif to==6: self.rotation -= 1 # and (self.rotation>265 or self.rotation==0.)
-        # elif to==7: self.rotation += 1 # and self.rotation<110
-        # else: r = self.app.sliders_reward[6].value # penalty for inaction
         self.set_vect_state()
         return r
 
@@ -252,8 +223,6 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
 
     def on_touch_up(self, touch):
         if touch.grab_current == self: self.tap_event()
-        #print(self.id, self.taps, self.nx, self.ny, self.ns, self.nr)
-        # self.app.do_current_ui_vect([self.id, self.taps, self.nx, self.ny, self.ns, self.nr])
         super(FlyScatterV3, self).on_touch_up(touch)
 
     def simple_adapt(self, *args):
@@ -274,20 +243,6 @@ class FlyScatterV3(Scatter):#(TouchRippleBehavior, Scatter):
             elif h > self.raw_height: self.reduceH = -1
             self.children[1].width = w + self.reduceW
             self.children[1].height = h + self.reduceH
-
-    # def on_touch_down(self, touch):
-    #     if touch.grab_current == self: self.tap_event()
-    #     super(FlyScatterV3, self).on_touch_down(touch)
-
-    # def on_touch_move(self, touch):
-        # if not self.doublesize:
-        #     self.children[0].width *= 2
-        #     self.children[0].height *= 2
-        #     self.doublesize = True
-        # else:
-        #     self.children[0].width //= 2
-        #     self.children[0].height //= 2
-        #     self.doublesize = False
 
 class AsyncConsoleScatter(Scatter):
     console = None
@@ -406,22 +361,6 @@ class FlyScatter(TouchRippleBehavior, Scatter):
             Clock.unschedule(self.update_pos)
             self.emulation = False
 
-# Builder.load_string('''
-# <LineRectangle>:
-#     canvas:
-#         Color:
-#             rgba: .1, .1, 1, .9
-#         Line:
-#             width: 2.
-#             rectangle: (self.x, self.y, self.width, self.height)
-#     Label:
-#         center: root.center
-#         text: 'Rectangle'
-# ''')
-#
-# class LineRectangle(Widget):
-#     pass
-
 Builder.load_string('''
 <LineRectangle>:
     canvas:
@@ -450,6 +389,4 @@ class LineRectangle(Widget):
         self.label_text = kwargs.pop('label_text', 'Rectangle')
         self.label_pos = kwargs.pop('label_pos', [0, 0])
         super(LineRectangle, self).__init__()
-#
-# self.bbox1 = LineRectangle(line_wdth=2, line_rect=[100, 100, 100, 100], line_color=[1,0,0,1], label_text='bbox1', label_pos=[100, 100])
 

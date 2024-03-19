@@ -26,14 +26,3 @@ class MyColors(Enum):
     @staticmethod
     def get_textcolor(while_flag=False):
         return [0, 0, 0, 1] if while_flag else [1, 1, 1, 1]
-
-# somecolors = []
-# x = float(.01); y = float(.01); z = float(.01)
-# while (x <= 1.):
-#     while (y <= 1.):
-#         while (z <= 1.):
-#             clr = [x,y,z,1]
-#             somecolors.append(clr)
-#             z += .1
-#         y += .1
-#     x += .1

@@ -1,6 +1,6 @@
 # Adaptive Mobile User Interface based on Machine Learning Model (Multi-agent Reinforcement Learning Approach)
 ### By Dmitry Vidmanov, Alexander Alfimtsev
-#### Copyright (c) 2023 Bauman Moscow State Technical University. All rights reserved.
+#### Copyright (c) 2024. All rights reserved.
 
 This project is a mobile user interface sandbox platform based on the popular Kivy software library, providing rapid development capabilities for applications equipped with user interfaces, such as multi-touch applications.
 
@@ -27,9 +27,6 @@ The number of clicks on the button is the criterion of adaptation. We adapt the 
 
 ![img.png](data/interface0016.png)
 
-Presplash-promo
-
-![img.png](data/presplash-promo.png)
 
 ## Android
 You can build for Android using buildozer on Linux.
