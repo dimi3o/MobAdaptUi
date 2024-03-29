@@ -1,8 +1,14 @@
 # Adaptive Mobile User Interface based on Machine Learning Model (Multi-agent Reinforcement Learning Approach)
 ### By Dmitry Vidmanov, Alexander Alfimtsev
-#### Copyright (c) 2024. All rights reserved.
+#### Copyright (c) 2024 All rights reserved.
 
 This project is a mobile user interface sandbox platform based on the popular Kivy software library, providing rapid development capabilities for applications equipped with user interfaces, such as multi-touch applications.
+
+"**Mobile User Interface Adaptation Based on Usability Reward Model and Multi-Agent Reinforcement Learning**"
+
+https://www.mdpi.com/2414-4088/8/4/26
+
+Discover how the research integrates usability metrics into multi-agent reinforcement learning for mobile UI adaptation. Addressing key challenges in digital product development, the study explores the effectiveness of different RL algorithms on usability metrics.
 
 Version 0.0.3.4 (22.10.2023) MARLMUI
 
